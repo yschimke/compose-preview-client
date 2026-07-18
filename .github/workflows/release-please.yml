@@ -1,0 +1,38 @@
+name: release-please
+
+# Maintains a release PR that bumps the app version (in mobile/wear build.gradle.kts) and, on merge,
+# tags `v<version>` and invokes the Play publish workflow. Non-draft, so GitHub writes the tag on
+# publish and `release.yml`'s `workflow_call` builds + publishes the apps.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Build + publish the mobile / wear apps when a release is created. Invoked via workflow_call
+  # rather than relying on the tag push (a GITHUB_TOKEN-created tag doesn't trigger tag workflows).
+  release-apps:
+    needs: release-please
+    if: ${{ !cancelled() && needs.release-please.outputs.release_created == 'true' }}
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit
+    permissions:
+      contents: write

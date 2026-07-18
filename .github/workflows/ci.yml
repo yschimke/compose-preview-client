@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ktfmt + core tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: ktfmt
+        run: ./gradlew ktfmtCheckAll --stacktrace
+      - name: Core engine tests
+        run: ./gradlew :core:test --stacktrace
+
+  android:
+    name: Assemble mobile + wear
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # No explicit `sdkmanager` platform install: the hosted runner ships a base
+      # Android SDK and AGP auto-downloads any missing platform/build-tools it needs
+      # (including the `compileSdk 37` preview `:wear` targets — `platforms;android-37`
+      # isn't resolvable via the runner's `sdkmanager` CLI, but AGP's own downloader
+      # fetches it). This mirrors how compose-ai-tools builds its compileSdk-37 modules.
+      - name: Assemble debug
+        run: ./gradlew :mobile:assembleDebug :wear:assembleDebug --stacktrace
