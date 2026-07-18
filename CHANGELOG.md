@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/yschimke/compose-preview-client/compare/v0.2.1...v0.2.2) (2026-07-18)
+
+
+### Features
+
+* import mobile/wear session-viewer client apps ([#2533](https://github.com/yschimke/compose-preview-client/issues/2533)) ([4bb49c1](https://github.com/yschimke/compose-preview-client/commit/4bb49c1e3c4dc17a808362966b680a00d3d0576b))
+* import mobile/wear session-viewer client apps ([#2533](https://github.com/yschimke/compose-preview-client/issues/2533)) ([ffdde6a](https://github.com/yschimke/compose-preview-client/commit/ffdde6a87370cb8212a966693c80137c10905bbf))
+
 ## [0.2.1](https://github.com/yschimke/compose-ai-tools/compare/clients-v0.2.0...clients-v0.2.1) (2026-07-10)
 
 
