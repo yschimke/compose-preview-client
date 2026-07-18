@@ -1,0 +1,66 @@
+[versions]
+# Toolchain
+agp = "9.2.1"
+kotlin = "2.4.0"
+ktfmt = "0.26.0"
+play-publisher = "4.0.0"
+
+# The compose-preview render plugin (published to Maven Central from
+# yschimke/compose-ai-tools). Consumed for the mobile/wear @Preview render
+# pipeline that regenerates the Play-store screenshots (`composePreviewRenderAll`).
+# The plugin marker isn't published, so settings.gradle.kts maps the id to the
+# `ee.schimke.composeai:compose-preview-plugin` artifact coordinates.
+compose-preview-plugin = "0.16.54"
+
+# AndroidX / Compose
+compose-bom-stable = "2026.06.01"
+activity-compose = "1.13.0"
+wear-compose = "1.7.0-alpha05"
+wear-tooling-preview = "1.0.0"
+
+# Kotlinx
+kotlinx-coroutines = "1.11.0"
+kotlinx-serialization = "1.11.0"
+
+# Networking
+ktor = "3.5.1"
+
+# Test
+junit = "4.13.2"
+truth = "1.4.5"
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-preview = { id = "ee.schimke.composeai.preview", version.ref = "compose-preview-plugin" }
+play-publisher = { id = "com.github.triplet.play", version.ref = "play-publisher" }
+
+[libraries]
+# Kotlinx
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+
+# Ktor WebSocket client (OkHttp engine)
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
+
+# Compose (BOM-managed)
+compose-bom-stable = { module = "androidx.compose:compose-bom", version.ref = "compose-bom-stable" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+
+# Wear Compose
+wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "wear-compose" }
+wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "wear-compose" }
+wear-compose-ui-tooling = { module = "androidx.wear.compose:compose-ui-tooling", version.ref = "wear-compose" }
+wear-tooling-preview = { module = "androidx.wear:wear-tooling-preview", version.ref = "wear-tooling-preview" }
+
+# Test
+junit = { module = "junit:junit", version.ref = "junit" }
+truth = { module = "com.google.truth:truth", version.ref = "truth" }
