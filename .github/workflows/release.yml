@@ -58,12 +58,9 @@ jobs:
         with:
           cache-read-only: 'true'
 
-      - name: Install Android SDK packages
-        run: |
-          set -euo pipefail
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-36" "platforms;android-37" "build-tools;36.0.0"
+      # No explicit `sdkmanager` platform install — AGP auto-downloads any missing
+      # platform/build-tools (incl. the `compileSdk 37` preview `:wear` target, which
+      # isn't resolvable via the runner's `sdkmanager` CLI). Mirrors compose-ai-tools.
 
       - name: Decode signing keystore
         if: env.HAS_SIGNING_KEYSTORE == 'true'
