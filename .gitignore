@@ -1,0 +1,66 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+# Eclipse-style compile output (IntelliJ writes this when "Use Build and run
+# using: IDE" is selected; Gradle puts its output in build/ instead).
+bin/
+
+# Kotlin
+.kotlin/
+
+# Java
+*.class
+hs_err_pid*
+replay_pid*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AI
+.claude/
+.gemini/
+
+# Local properties
+local.properties
+
+# Node / VS Code extension
+node_modules/
+vscode-extension/out/
+vscode-extension/.vscode-test/
+vscode-extension/media/webview/
+vscode-extension/preview-harness/out/
+vscode-extension/spatial-fixtures/out/
+vscode-extension/preview-harness/test-results/
+# Live XR spatial capture — generated in CI (render-xr-composite) from the real
+# composePreviewRenderXr output; never committed (the committed proxy is spatial-rich).
+vscode-extension/preview-harness/fixtures/spatial-xr-real.json
+vscode-extension/spatial-fixtures/spatial-xr-real/
+vscode-extension/preview-harness/playwright-report/
+vscode-extension/preview-harness/.last-run.json
+vscode-extension/src/version.generated.ts
+*.vsix
+
+# Python (for .github/actions/lib/ scripts and their tests)
+__pycache__/
+*.pyc
+
+# Jekyll site (built artefacts under site/)
+site/_site/
+site/.jekyll-cache/
+site/.jekyll-metadata
+site/Gemfile.lock
+site/vendor/
+
+# Daemon preview-history archive — written by the daemon's `HistoryManager` when running
+# (sysprop `composeai.daemon.historyDir`). Each module gets its own archive at
+# `<moduleDir>/.compose-preview-history/`. Ignore at any depth.
+.compose-preview-history/
