@@ -1,0 +1,12 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>yschimke/renovate-config"],
+  "packageRules": [
+    {
+      "description": "The AndroidX Remote Compose player is an alpha line separate from the Compose BOM, and it is what the apps play `.rc` documents and UI-builder designs with. The preset's androidx-compose group would bump it with the BOM; keep it in its own PR, never automerged: a player bump changes what every previewed document looks like, and the restricted player APIs `:player` calls move between alphas. Take a version at or ahead of what the UI builder exports.",
+      "matchPackageNames": ["/^androidx\\.compose\\.remote($|[.:])/"],
+      "groupName": "androidx-compose-remote",
+      "automerge": false
+    }
+  ]
+}
