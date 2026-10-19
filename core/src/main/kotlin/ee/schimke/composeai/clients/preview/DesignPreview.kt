@@ -60,6 +60,14 @@ sealed interface PreviewContent {
   class Still(val png: ByteArray, val revision: Long?, val reasons: List<String>) : PreviewContent
 
   data class Failed(val message: String) : PreviewContent
+
+  /**
+   * [server] refused this device (401/403): there's no credential, or it expired or doesn't reach
+   * this design. Signing in ([ee.schimke.composeai.clients.auth.SignIn]) and reopening fixes the
+   * first two.
+   */
+  data class NeedsSignIn(val server: ServerAddress, val status: Int, val signedIn: Boolean) :
+    PreviewContent
 }
 
 /**
@@ -215,11 +223,13 @@ internal constructor(
         return when (val png = api.renderDocumentPng(document)) {
           is UiBuilderApi.Fetch.Ok -> PreviewContent.Still(png.value, revision, reasons)
           is UiBuilderApi.Fetch.Refused ->
-            PreviewContent.Failed(
-              (reasons + "render: ${png.describe()}").joinToString("\n").ifBlank {
-                "This server can't render .uid files"
-              }
-            )
+            if (png.unauthorized) refusedAccess(png)
+            else
+              PreviewContent.Failed(
+                (reasons + "render: ${png.describe()}").joinToString("\n").ifBlank {
+                  "This server can't render .uid files"
+                }
+              )
         }
       }
       is Source.Hosted -> {
@@ -284,6 +294,14 @@ internal constructor(
     }
   }
 
+  private fun refusedAccess(refusal: UiBuilderApi.Fetch.Refused) =
+    when (source) {
+      is Source.Hosted ->
+        PreviewContent.NeedsSignIn(source.link.server, refusal.status, source.link.token != null)
+      is Source.Local ->
+        PreviewContent.NeedsSignIn(source.server, refusal.status, source.token != null)
+    }
+
   internal sealed interface Source {
     data class Hosted(val link: PreviewLink.Design) : Source
 
@@ -294,12 +312,6 @@ internal constructor(
   companion object {
     val DEFAULT_DEBOUNCE: Duration = 250.milliseconds
     val DEFAULT_RECONNECT: Duration = 3.seconds
-
-    private fun refusedAccess(refusal: UiBuilderApi.Fetch.Refused) =
-      PreviewContent.Failed(
-        "The server refused access (HTTP ${refusal.status}). Open the design's link with a token, " +
-          "or ask its owner to share it."
-      )
 
     private fun UiBuilderApi.Fetch.Refused.describe(): String =
       message.lineSequence().firstOrNull { it.isNotBlank() }?.take(300) ?: "HTTP $status"

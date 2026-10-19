@@ -66,8 +66,51 @@ class PreviewLinkTest {
   fun sessionLinksStillStream() {
     val link = PreviewLink.parse("composeai://session?host=h&preview=p&token=t")
     assertThat(link).isInstanceOf(PreviewLink.Stream::class.java)
-    assertThat(PreviewLink.parse("http://h:7341/p/Foo?token=t"))
+    assertThat(PreviewLink.parse("ws://h:7341/ws/Foo?token=t"))
       .isEqualTo(PreviewLink.Stream(SessionLink("h", 7341, "t", SessionTarget.Preview("Foo"))))
+  }
+
+  @Test
+  fun catalogViewerAndRenderLinksAreCatalogPreviews() {
+    val server = ServerAddress("preview.coo.ee", 443, true)
+    val viewer =
+      PreviewLink.parse(
+        "https://preview.coo.ee/homeassistant-remotecompose/p/card-alarm-light__ideal__default__light__compact"
+      ) as PreviewLink.CatalogPreview
+    assertThat(viewer)
+      .isEqualTo(
+        PreviewLink.CatalogPreview(
+          server,
+          "homeassistant-remotecompose",
+          "card-alarm-light__ideal__default__light__compact",
+        )
+      )
+    // The .rc beside the .png the catalog serves.
+    assertThat(viewer.rcUrl)
+      .isEqualTo(
+        "https://preview.coo.ee/homeassistant-remotecompose/render/card-alarm-light__ideal__default__light__compact.rc"
+      )
+    assertThat(viewer.pngUrl)
+      .endsWith("/render/card-alarm-light__ideal__default__light__compact.png")
+    assertThat(viewer.stream("t").webSocketUrl())
+      .isEqualTo(
+        "wss://preview.coo.ee:443/homeassistant-remotecompose/ws/card-alarm-light__ideal__default__light__compact?token=t"
+      )
+
+    assertThat(PreviewLink.parse("https://preview.coo.ee/m3/render/Button.png?token=t"))
+      .isEqualTo(PreviewLink.CatalogPreview(server, "m3", "Button", "t"))
+    // The default catalog's viewer, which used to need a token to open at all.
+    assertThat(PreviewLink.parse("http://h:7341/p/Foo"))
+      .isEqualTo(PreviewLink.CatalogPreview(ServerAddress("h", 7341, false), null, "Foo"))
+  }
+
+  @Test
+  fun uploadedDocumentsPlayFromRaw() {
+    val link = PreviewLink.parse("https://preview.coo.ee/d/AbC123") as PreviewLink.RemoteDocument
+    assertThat(link.url).isEqualTo("https://preview.coo.ee/d/AbC123/raw")
+    assertThat(link.label).isEqualTo("AbC123")
+    assertThat(PreviewLink.parse("https://preview.coo.ee/d/AbC123/raw")).isEqualTo(link)
+    assertThat(PreviewLink.parse("https://preview.coo.ee/d/AbC123/render.png")).isNull()
   }
 
   @Test

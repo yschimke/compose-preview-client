@@ -212,11 +212,33 @@ class DesignPreviewTest {
     }
 
   @Test
+  fun localFileWhosePngNeedsAuthAsksToSignIn() =
+    runBlocking<Unit> {
+      val engine = MockEngine { request ->
+        when (request.url.encodedPath) {
+          "/api/ui-builder/v1/documents/export.rc" -> respond("", HttpStatusCode.NotFound)
+          else -> respond("authentication is required", HttpStatusCode.Unauthorized)
+        }
+      }
+      val api = UiBuilderApi(server, null, HttpClient(engine) { expectSuccess = false })
+      val document = Json.parseToJsonElement(designJson).jsonObject
+      val p =
+        DesignPreview(
+          DesignPreview.Source.Local(server, null, document),
+          api,
+          null,
+          1.milliseconds,
+          1.milliseconds,
+        )
+      assertThat(p.load(phone)).isEqualTo(PreviewContent.NeedsSignIn(server, 401, signedIn = false))
+    }
+
+  @Test
   fun refusedAccessSaysSo() =
     runBlocking<Unit> {
       val p = preview { respond("authentication is required", HttpStatusCode.Unauthorized) }
-      val content = p.load(phone) as PreviewContent.Failed
-      assertThat(content.message).contains("401")
+      val content = p.load(phone) as PreviewContent.NeedsSignIn
+      assertThat(content).isEqualTo(PreviewContent.NeedsSignIn(server, 401, signedIn = true))
     }
 
   @Test

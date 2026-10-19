@@ -43,7 +43,10 @@ class RemoteDocumentSource(
     if (response.status == HttpStatusCode.NotModified) return Result.Unchanged
     if (!response.status.isSuccess()) {
       val body = runCatching { response.bodyAsText() }.getOrDefault("").take(500)
-      return Result.Failed("HTTP ${response.status.value}${if (body.isBlank()) "" else ": $body"}")
+      return Result.Failed(
+        "HTTP ${response.status.value}${if (body.isBlank()) "" else ": $body"}",
+        response.status.value,
+      )
     }
     etag = response.headers[HttpHeaders.ETag]
     lastModified = response.headers[HttpHeaders.LastModified]
@@ -58,7 +61,10 @@ class RemoteDocumentSource(
    * The document now, then again whenever it changes, until cancelled. A failed poll after the
    * first document is reported but keeps the last good one on screen.
    */
-  fun watch(interval: Duration = DEFAULT_INTERVAL): Flow<Result> = flow {
+  fun watch(
+    interval: Duration = DEFAULT_INTERVAL,
+    unvalidatedInterval: Duration = UNVALIDATED_INTERVAL,
+  ): Flow<Result> = flow {
     while (true) {
       val result =
         try {
@@ -69,7 +75,8 @@ class RemoteDocumentSource(
           Result.Failed(e.message ?: e::class.simpleName.orEmpty())
         }
       if (result !is Result.Unchanged) emit(result)
-      delay(interval)
+      // Without validators every poll downloads the whole document, so poll less often.
+      delay(if (etag == null && lastModified == null) unvalidatedInterval else interval)
     }
   }
 
@@ -78,11 +85,18 @@ class RemoteDocumentSource(
 
     data object Unchanged : Result
 
-    data class Failed(val message: String) : Result
+    /** [status] is the HTTP status when the server answered; 401/403 mean sign in. */
+    data class Failed(val message: String, val status: Int? = null) : Result
   }
 
   companion object {
     val DEFAULT_INTERVAL: Duration = 2.seconds
+
+    /**
+     * For a server that sends no `ETag` / `Last-Modified` (a hosted catalog's `render/<id>.rc`),
+     * where each poll is a full download.
+     */
+    val UNVALIDATED_INTERVAL: Duration = 10.seconds
 
     private val sharedClient: HttpClient by lazy { HttpClient(OkHttp) { expectSuccess = false } }
 

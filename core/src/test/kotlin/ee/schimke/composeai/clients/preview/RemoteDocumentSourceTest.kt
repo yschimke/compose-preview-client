@@ -65,9 +65,9 @@ class RemoteDocumentSourceTest {
       }
       val source =
         RemoteDocumentSource("https://h/a.rc", null, HttpClient(engine) { expectSuccess = false })
-      val results = source.watch(1.milliseconds).take(3).toList()
+      val results = source.watch(1.milliseconds, 1.milliseconds).take(3).toList()
       assertThat(results[0]).isInstanceOf(RemoteDocumentSource.Result.Changed::class.java)
-      assertThat(results[1]).isEqualTo(RemoteDocumentSource.Result.Failed("HTTP 502: gone"))
+      assertThat(results[1]).isEqualTo(RemoteDocumentSource.Result.Failed("HTTP 502: gone", 502))
       assertThat((results[2] as RemoteDocumentSource.Result.Changed).bytes)
         .isEqualTo(byteArrayOf(3))
     }
