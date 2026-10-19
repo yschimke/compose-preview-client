@@ -18,6 +18,10 @@ activity-compose = "1.13.0"
 wear-compose = "1.7.0-alpha05"
 wear-tooling-preview = "1.0.0"
 
+# AndroidX Remote Compose — the player `.rc` documents and Remote Compose designs are played with
+# on the device. Released to Google Maven; keep it at or ahead of what the UI builder exports.
+remote-compose = "1.0.0-alpha21"
+
 # Kotlinx
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
@@ -31,6 +35,7 @@ truth = "1.4.5"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
@@ -41,11 +46,13 @@ play-publisher = { id = "com.github.triplet.play", version.ref = "play-publisher
 # Kotlinx
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 
 # Ktor WebSocket client (OkHttp engine)
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 # Compose (BOM-managed)
 compose-bom-stable = { module = "androidx.compose:compose-bom", version.ref = "compose-bom-stable" }
@@ -54,6 +61,11 @@ compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+
+# Remote Compose
+remote-core = { module = "androidx.compose.remote:remote-core", version.ref = "remote-compose" }
+remote-player-core = { module = "androidx.compose.remote:remote-player-core", version.ref = "remote-compose" }
+remote-player-view = { module = "androidx.compose.remote:remote-player-view", version.ref = "remote-compose" }
 
 # Wear Compose
 wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "wear-compose" }

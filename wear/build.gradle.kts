@@ -85,6 +85,8 @@ play {
 
 dependencies {
   implementation(project(":core"))
+  // Plays `.rc` documents and Remote Compose designs on the device; see `:player`.
+  implementation(project(":player"))
 
   implementation(platform(libs.compose.bom.stable))
   implementation(libs.compose.ui)

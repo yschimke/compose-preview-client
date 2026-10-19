@@ -33,4 +33,7 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.truth)
   testImplementation(libs.kotlinx.coroutines.core)
+  testImplementation(libs.kotlinx.coroutines.test)
+  // The UI-builder and `.rc` clients are exercised against Ktor's in-memory engine.
+  testImplementation(libs.ktor.client.mock)
 }

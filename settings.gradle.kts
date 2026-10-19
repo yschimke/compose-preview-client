@@ -36,5 +36,7 @@ rootProject.name = "compose-preview-client"
 // mDNS discovery contract); `:mobile` / `:wear` are the thin Android / Wear OS shells on top. See
 // docs/SESSION-VIEWER.md and the versioned wire contract owned by yschimke/compose-ai-tools.
 include(":core")
+// The on-device player + device-preview glue the two apps share.
+include(":player")
 include(":mobile")
 include(":wear")

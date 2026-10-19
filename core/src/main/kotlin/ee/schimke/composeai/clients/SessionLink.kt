@@ -24,6 +24,10 @@ import java.net.URLEncoder
 data class SessionLink(
   val host: String,
   val port: Int,
+  /**
+   * The served endpoints' only gate. Parsed links always carry one; an empty token is only built
+   * in-app, for a `--public` server's live stream (a public design's native render).
+   */
   val token: String,
   val target: SessionTarget,
   /** `true` → `wss`/`https` (TLS). Defaults to plaintext, the serve default on a trusted LAN. */
@@ -32,7 +36,6 @@ data class SessionLink(
   init {
     require(host.isNotBlank()) { "host is blank" }
     require(port in 1..65535) { "port out of range: $port" }
-    require(token.isNotBlank()) { "token is blank" }
   }
 
   /**
@@ -45,8 +48,11 @@ data class SessionLink(
     val scheme = if (secure) "wss" else "ws"
     val base = "$scheme://$host:$port"
     return when (val t = target) {
-      is SessionTarget.Preview ->
-        "$base/ws/${encodeSegment(t.previewId)}?token=${encodeQuery(token)}"
+      is SessionTarget.Preview -> {
+        val session = t.session?.let { "/${encodeSegment(it)}" }.orEmpty()
+        val query = if (token.isEmpty()) "" else "?token=${encodeQuery(token)}"
+        "$base$session/ws/${encodeSegment(t.previewId)}$query"
+      }
       is SessionTarget.Bundle ->
         buildString {
           append("$base/ws/bundle?src=").append(encodeQuery(t.src))
@@ -62,7 +68,10 @@ data class SessionLink(
     append("&port=").append(port)
     append("&token=").append(encodeQuery(token))
     when (val t = target) {
-      is SessionTarget.Preview -> append("&preview=").append(encodeQuery(t.previewId))
+      is SessionTarget.Preview -> {
+        append("&preview=").append(encodeQuery(t.previewId))
+        t.session?.let { append("&session=").append(encodeQuery(it)) }
+      }
       is SessionTarget.Bundle -> {
         append("&bundle=").append(encodeQuery(t.src))
         t.previewId?.let { append("&preview=").append(encodeQuery(it)) }
@@ -169,13 +178,14 @@ data class SessionLink(
       val port = if (uri.port != -1) uri.port else defaultPort(secure)
       val q = queryParams(uri.rawQuery)
       val token = q["token"]?.takeIf { it.isNotBlank() } ?: return null
-      val seg = pathSegmentAfter(uri.rawPath.orEmpty(), "/ws/") ?: return null
+      val path = uri.rawPath.orEmpty()
+      val seg = pathSegmentAfter(path, "/ws/") ?: return null
       val target =
         if (seg == "bundle") {
           val src = q["src"]?.takeIf { it.isNotBlank() } ?: return null
           SessionTarget.Bundle(src, q["preview"]?.takeIf { it.isNotBlank() })
         } else {
-          SessionTarget.Preview(seg)
+          SessionTarget.Preview(seg, sessionBefore(path, "/ws/"))
         }
       return runCatching { SessionLink(host, port, token, target, secure) }.getOrNull()
     }
@@ -185,7 +195,7 @@ data class SessionLink(
       val preview = q["preview"]?.takeIf { it.isNotBlank() }
       return when {
         bundle != null -> SessionTarget.Bundle(bundle, preview)
-        preview != null -> SessionTarget.Preview(preview)
+        preview != null -> SessionTarget.Preview(preview, q["session"]?.takeIf { it.isNotBlank() })
         else -> null
       }
     }
@@ -203,7 +213,13 @@ data class SessionLink(
       return decode(rest).takeIf { it.isNotBlank() }
     }
 
-    private fun queryParams(rawQuery: String?): Map<String, String> {
+    /** `/{session}/ws/…` → `session`; null for the bare `/ws/…` form. */
+    private fun sessionBefore(path: String, marker: String): String? {
+      val before = path.substring(0, path.indexOf(marker)).trim('/')
+      return before.takeIf { it.isNotEmpty() && '/' !in it }?.let(::decode)
+    }
+
+    internal fun queryParams(rawQuery: String?): Map<String, String> {
       if (rawQuery.isNullOrEmpty()) return emptyMap()
       return rawQuery
         .split('&')
@@ -218,12 +234,12 @@ data class SessionLink(
 
     // The `String` charset overloads work on every Android API level; the `Charset` overloads are
     // API 33+ (java.net since Java 10), which would crash on older devices the apps still target.
-    private fun encodeSegment(s: String): String =
+    internal fun encodeSegment(s: String): String =
       URLEncoder.encode(s, "UTF-8").replace("+", "%20").replace("%7E", "~")
 
-    private fun encodeQuery(s: String): String = URLEncoder.encode(s, "UTF-8")
+    internal fun encodeQuery(s: String): String = URLEncoder.encode(s, "UTF-8")
 
-    private fun decode(s: String): String =
+    internal fun decode(s: String): String =
       runCatching { URLDecoder.decode(s, "UTF-8") }.getOrDefault(s)
   }
 }

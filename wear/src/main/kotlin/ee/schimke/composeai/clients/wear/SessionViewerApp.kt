@@ -1,5 +1,6 @@
 package ee.schimke.composeai.clients.wear
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,13 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,21 +34,48 @@ import ee.schimke.composeai.clients.SessionLink
 import ee.schimke.composeai.clients.SessionState
 import ee.schimke.composeai.clients.SessionTarget
 import ee.schimke.composeai.clients.discovery.DiscoveredSession
+import ee.schimke.composeai.clients.player.DevicePreview
+import ee.schimke.composeai.clients.player.LocalFiles
+import ee.schimke.composeai.clients.player.PreviewOverlayState
+import ee.schimke.composeai.clients.preview.DeviceProfile
+import ee.schimke.composeai.clients.preview.PreviewLink
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterIsInstance
 
-/** Wear app root — straight into [SessionScreen] for a tapped link, else the [ConnectScreen]. */
+/**
+ * Wear app root — straight into the full-screen [PreviewScreen] for a tapped link, else the
+ * [ConnectScreen].
+ */
 @Composable
 fun SessionViewerApp(
-  link: SessionLink?,
+  link: PreviewLink?,
   discoveredSessions: List<DiscoveredSession>,
-  onConnect: (SessionLink) -> Unit,
+  onConnect: (PreviewLink) -> Unit,
   onDisconnect: () -> Unit,
 ) {
   MaterialTheme {
     if (link == null) {
       ConnectScreen(discoveredSessions, onConnect)
     } else {
-      SessionScreen(link, onDisconnect)
+      PreviewScreen(link, onDisconnect)
     }
+  }
+}
+
+/**
+ * A device preview on the watch face: Remote Compose designs and documents play on the watch itself
+ * at its real (round) size; anything else streams from the host rendered for this screen. A swipe
+ * back leaves.
+ */
+@Composable
+fun PreviewScreen(link: PreviewLink, onDisconnect: () -> Unit) {
+  BackHandler(onBack = onDisconnect)
+  Box(Modifier.fillMaxSize().background(Color.Black)) {
+    DevicePreview(
+      link = link,
+      stream = { session, device -> SessionScreen(session, onDisconnect, device) },
+      overlay = { PreviewChrome(it, onBack = onDisconnect) },
+    )
   }
 }
 
@@ -52,6 +83,7 @@ fun SessionViewerApp(
 fun SessionScreen(
   link: SessionLink,
   onDisconnect: () -> Unit,
+  device: DeviceProfile? = null,
   clientFactory: () -> SessionClient = { SessionClient(defaultTransportFactory()) },
 ) {
   val client = remember(link) { clientFactory() }
@@ -61,11 +93,73 @@ fun SessionScreen(
   LaunchedEffect(link) { client.connect(link) }
   // Close the WebSocket when the screen leaves or the link changes, so the session doesn't leak.
   DisposableEffect(link) { onDispose { client.close("left session screen") } }
+  // Render for this watch's screen on every (re)connect and whenever the device changes.
+  LaunchedEffect(client, device) {
+    if (device == null) return@LaunchedEffect
+    client.state.filterIsInstance<SessionState.Connected>().collect {
+      client.setOverrides(device.streamOverrides())
+    }
+  }
 
   Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
     FrameCanvas(frame = frame, modifier = Modifier.fillMaxSize(), onInput = { client.send(it) })
     if (frame == null || state is SessionState.Failed || state is SessionState.Closed) {
       StatusOverlay(state = state, target = link.target, onDismiss = onDisconnect)
+    }
+  }
+}
+
+/**
+ * Watch chrome over a preview: a problem takes the screen (with Back); otherwise the label shows
+ * briefly at the top of the round face and fades, leaving the design.
+ */
+@Composable
+fun PreviewChrome(state: PreviewOverlayState, onBack: () -> Unit) {
+  if (state.error != null || state.mode == null) {
+    Box(
+      Modifier.fillMaxSize().background(Color(0xCC000000)).padding(16.dp),
+      contentAlignment = Alignment.Center,
+    ) {
+      Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        Text(
+          if (state.error != null) "Can't preview" else "Opening…",
+          color = Color.White,
+          style = MaterialTheme.typography.titleMedium,
+          textAlign = TextAlign.Center,
+        )
+        Text(
+          state.error ?: state.label,
+          color = Color.White.copy(alpha = 0.7f),
+          style = MaterialTheme.typography.bodySmall,
+          textAlign = TextAlign.Center,
+          maxLines = 4,
+        )
+        Button(onClick = onBack) { Text("Back") }
+      }
+    }
+    return
+  }
+  var visible by remember(state.mode) { mutableStateOf(true) }
+  LaunchedEffect(state.mode) {
+    delay(2_000)
+    visible = false
+  }
+  val message = state.notice ?: state.action ?: state.label.takeIf { visible || state.loading }
+  if (message != null) {
+    Box(Modifier.fillMaxSize().padding(top = 18.dp), contentAlignment = Alignment.TopCenter) {
+      Text(
+        message,
+        color = if (state.notice != null) Color(0xFFFFB4AB) else Color.White,
+        style = MaterialTheme.typography.labelSmall,
+        textAlign = TextAlign.Center,
+        maxLines = 2,
+        modifier =
+          Modifier.background(Color(0xCC1B1B1F), RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+      )
     }
   }
 }
@@ -106,7 +200,7 @@ private fun StatusOverlay(state: SessionState, target: SessionTarget, onDismiss:
 }
 
 @Composable
-fun ConnectScreen(discoveredSessions: List<DiscoveredSession>, onConnect: (SessionLink) -> Unit) {
+fun ConnectScreen(discoveredSessions: List<DiscoveredSession>, onConnect: (PreviewLink) -> Unit) {
   Column(
     Modifier.fillMaxSize()
       .verticalScroll(rememberScrollState())
@@ -119,9 +213,16 @@ fun ConnectScreen(discoveredSessions: List<DiscoveredSession>, onConnect: (Sessi
       style = MaterialTheme.typography.titleMedium,
       textAlign = TextAlign.Center,
     )
+    // Bundled documents: check on-watch playback with no server at all.
+    LocalFiles.SAMPLES.forEach { sample ->
+      val link = PreviewLink.LocalDocument(sample)
+      Button(onClick = { onConnect(link) }, modifier = Modifier.fillMaxWidth()) {
+        Text("Sample: ${link.label.removeSuffix(".rc")}")
+      }
+    }
     if (discoveredSessions.isEmpty()) {
       Text(
-        "Open a session link from your phone, or wait for a server on this network.",
+        "Open a design, a .rc link or a session link from your phone, or wait for a server on this network.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
@@ -164,6 +265,25 @@ private fun WearConnectingPreview() {
 private fun WearFailedPreview() {
   MaterialTheme {
     StatusOverlay(SessionState.Failed("No route to host"), SAMPLE.target, onDismiss = {})
+  }
+}
+
+@Preview(
+  name = "Wear preview chrome",
+  showBackground = true,
+  backgroundColor = 0xFF000000,
+  widthDp = 220,
+  heightDp = 220,
+)
+@Composable
+private fun WearPreviewChromePreview() {
+  MaterialTheme {
+    Box(Modifier.fillMaxSize().background(Color(0xFF203040))) {
+      PreviewChrome(
+        PreviewOverlayState(label = "weather-tile", mode = "Playing on device"),
+        onBack = {},
+      )
+    }
   }
 }
 
