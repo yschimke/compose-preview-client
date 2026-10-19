@@ -35,21 +35,24 @@ class SessionClient(private val transportFactory: StreamTransport.Factory) {
   private val lastSeq = AtomicLong(Long.MIN_VALUE)
 
   @Volatile private var transport: StreamTransport? = null
-  @Volatile private var current: SessionLink? = null
+  private var activeConnection: Any? = null
 
   /**
    * Connect to [link]. Tears down any existing connection first, so a tapped link always replaces
    * the live session. Returns immediately; observe [state] for progress.
    */
+  @Synchronized
   fun connect(link: SessionLink) {
+    // Invalidate callbacks before closing: close may synchronously notify its listener.
+    val connection = Any()
+    activeConnection = connection
     closeTransport(StreamTransport.NORMAL_CLOSURE, "switching session")
     lastSeq.set(Long.MIN_VALUE)
     _frame.value = null
-    current = link
     _state.value = SessionState.Connecting(link)
     val t = transportFactory.create()
     transport = t
-    t.open(link.webSocketUrl(), TransportCallbacks(link))
+    t.open(link.webSocketUrl(), TransportCallbacks(link, connection))
   }
 
   /** Forward one pointer/key event into the held composition. No-op unless connected. */
@@ -63,12 +66,14 @@ class SessionClient(private val transportFactory: StreamTransport.Factory) {
   fun requestFrame(): Boolean = sendText(StreamMessages.requestFrame())
 
   /** Close the session. Idempotent; moves [state] to [SessionState.Closed]. */
+  @Synchronized
   fun close(reason: String = "client closed") {
+    activeConnection = null
     closeTransport(StreamTransport.NORMAL_CLOSURE, reason)
-    current = null
     _state.value = SessionState.Closed(reason)
   }
 
+  @Synchronized
   private fun sendText(text: String): Boolean {
     if (_state.value !is SessionState.Connected) return false
     return transport?.send(text) ?: false
@@ -81,33 +86,41 @@ class SessionClient(private val transportFactory: StreamTransport.Factory) {
     }
   }
 
-  private inner class TransportCallbacks(private val link: SessionLink) : StreamTransport.Listener {
-    override fun onOpen() {
-      // Guard against a stale transport reconnecting after the user moved on.
-      if (current != link) return
-      _state.value = SessionState.Connected(link)
-      // Prime the lane: the spike only pushes on demand, so ask for the first paint immediately.
-      requestFrame()
-    }
+  // The check and mutation share connect/close's monitor so a callback already in flight
+  // cannot write its frame or state after a replacement connection resets them.
+  private inline fun withConnection(connection: Any, update: () -> Unit) {
+    synchronized(this) { if (activeConnection === connection) update() }
+  }
 
-    override fun onText(text: String) {
-      if (current != link) return
-      when (val msg = StreamMessages.parseServer(text)) {
-        is StreamMessages.ServerMessage.Frame -> acceptFrame(msg.frame)
-        is StreamMessages.ServerMessage.Error -> _errors.tryEmit(msg.message)
-        is StreamMessages.ServerMessage.Unknown -> Unit // forward-compat: ignore quietly
+  private inner class TransportCallbacks(
+    private val link: SessionLink,
+    private val connection: Any,
+  ) : StreamTransport.Listener {
+    override fun onOpen() =
+      withConnection(connection) {
+        _state.value = SessionState.Connected(link)
+        // Prime the lane: the spike only pushes on demand, so ask for the first paint immediately.
+        requestFrame()
       }
-    }
 
-    override fun onClosed(code: Int, reason: String) {
-      if (current != link) return
-      _state.value = SessionState.Closed(reason.ifBlank { "server closed (code $code)" })
-    }
+    override fun onText(text: String) =
+      withConnection(connection) {
+        when (val msg = StreamMessages.parseServer(text)) {
+          is StreamMessages.ServerMessage.Frame -> acceptFrame(msg.frame)
+          is StreamMessages.ServerMessage.Error -> _errors.tryEmit(msg.message)
+          is StreamMessages.ServerMessage.Unknown -> Unit // forward-compat: ignore quietly
+        }
+      }
 
-    override fun onFailure(error: Throwable) {
-      if (current != link) return
-      _state.value = SessionState.Failed(error.message ?: "connection failed", error)
-    }
+    override fun onClosed(code: Int, reason: String) =
+      withConnection(connection) {
+        _state.value = SessionState.Closed(reason.ifBlank { "server closed (code $code)" })
+      }
+
+    override fun onFailure(error: Throwable) =
+      withConnection(connection) {
+        _state.value = SessionState.Failed(error.message ?: "connection failed", error)
+      }
   }
 
   /** Apply newest-wins seq dedup: drop a frame older than one already painted. */
