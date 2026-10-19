@@ -19,8 +19,8 @@ import kotlinx.serialization.json.put
  * - **Decode** server→client text frames into [ServerMessage] ([parseServer]) — `frame` (base64 PNG
  *     + size + monotonic `seq`) and `error` (non-fatal; the lane stays open).
  * - **Encode** client→server messages ([setOverrides], [requestFrame], [input]) — the first two
- *   match the spike verbatim; [input] is the additive pointer/key extension this client introduces,
- *   shaped to drop straight onto `interactive/input` when the serve lane grows input support.
+ *   match the spike verbatim; [input] uses the top-level fields that
+ *   `ServeStreamProtocol.parseClient` reads.
  *
  * Pure JSON, no IO — so it's unit-tested directly and the transport stays a thin pipe. Parsing
  * never throws: malformed or unknown server messages become [ServerMessage.Unknown] rather than
@@ -87,24 +87,19 @@ object StreamMessages {
   fun requestFrame(): String = buildJsonObject { put("type", "requestFrame") }.toString()
 
   /**
-   * `{"type":"input","input":{kind,…}}` — forward one pointer/key event. The nested `input`
-   * object's fields mirror the daemon's `InteractiveInputParams` (sans `frameStreamId`, which the
-   * per-connection serve lane supplies), so adoption on the server is a pass-through.
+   * `{"type":"input","kind":…}` — forward one pointer/key event. The serve protocol reads the event
+   * fields at the top level, as specified in `docs/serve/SESSION-VIEWER-PROTOCOL.md` in
+   * compose-ai-tools. The per-connection serve lane supplies the daemon's `frameStreamId`.
    */
   fun input(event: InputEvent): String =
     buildJsonObject {
         put("type", "input")
-        put(
-          "input",
-          buildJsonObject {
-            put("kind", event.kind.wire)
-            event.pixelX?.let { put("pixelX", it) }
-            event.pixelY?.let { put("pixelY", it) }
-            put("pointerId", event.pointerId)
-            event.scrollDeltaY?.let { put("scrollDeltaY", it) }
-            event.keyCode?.let { put("keyCode", it) }
-          },
-        )
+        put("kind", event.kind.wire)
+        event.pixelX?.let { put("pixelX", it) }
+        event.pixelY?.let { put("pixelY", it) }
+        put("pointerId", event.pointerId)
+        event.scrollDeltaY?.let { put("scrollDeltaY", it) }
+        event.keyCode?.let { put("keyCode", it) }
       }
       .toString()
 }
