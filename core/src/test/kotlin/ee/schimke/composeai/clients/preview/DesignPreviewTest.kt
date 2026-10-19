@@ -133,7 +133,9 @@ class DesignPreviewTest {
       val p = preview { request ->
         when (request.url.encodedPath) {
           "/api/ui-builder/v1/designs/d1" -> respond(designJson, headers = json)
-          "/api/ui-builder/v1/documents/export.rc" -> respond("", HttpStatusCode.NotFound)
+          // A host with no Remote Compose lane at all, like preview.coo.ee today.
+          "/api/ui-builder/v1/documents/export.rc",
+          "/api/ui-builder/v1/designs/d1/export.rc" -> respond("", HttpStatusCode.NotFound)
           "/api/ui-builder/v1/designs/d1/native-preview" ->
             respond(
               """{"designId":"d1","revision":7,"imageBase64":"${Base64.getEncoder().encodeToString(png)}"}""",
@@ -158,6 +160,40 @@ class DesignPreviewTest {
       }
       val content = p.load(phone) as PreviewContent.Document
       assertThat(content.fitted).isFalse()
+    }
+
+  @Test
+  fun hostThatCannotCompileDocumentsStillServesTheAuthoredExport() =
+    runBlocking<Unit> {
+      val p = preview { request ->
+        when (request.url.encodedPath) {
+          "/api/ui-builder/v1/designs/d1" -> respond(designJson, headers = json)
+          "/api/ui-builder/v1/documents/export.rc" -> respond("", HttpStatusCode.NotFound)
+          "/api/ui-builder/v1/designs/d1/export.rc" -> respond(byteArrayOf(5))
+          else -> error("unexpected ${request.url}")
+        }
+      }
+      val content = p.load(phone) as PreviewContent.Document
+      assertThat(content.fitted).isFalse()
+      assertThat(content.revision).isEqualTo(7)
+    }
+
+  @Test
+  fun inexpressibleDesignSkipsTheAuthoredExport() =
+    runBlocking<Unit> {
+      val p = preview { request ->
+        when (request.url.encodedPath) {
+          "/api/ui-builder/v1/designs/d1" -> respond(designJson, headers = json)
+          "/api/ui-builder/v1/documents/export.rc" ->
+            respond("no lowering", HttpStatusCode.UnprocessableEntity)
+          "/api/ui-builder/v1/designs/d1/native-preview" ->
+            respond("""{"designId":"d1","revision":7,"compileError":"nope"}""", headers = json)
+          else -> error("unexpected ${request.url}")
+        }
+      }
+      assertThat(p.load(phone)).isInstanceOf(PreviewContent.Failed::class.java)
+      assertThat(requests.map { it.url.encodedPath })
+        .doesNotContain("/api/ui-builder/v1/designs/d1/export.rc")
     }
 
   @Test

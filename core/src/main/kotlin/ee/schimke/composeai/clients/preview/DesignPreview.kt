@@ -193,13 +193,18 @@ internal constructor(
       }
     loadedRevision = revision
 
+    // Whether the design's own export is still worth asking for: the document couldn't be read,
+    // or this host can't compile a supplied document. Not after a 422 — the design itself can't be
+    // expressed, and its saved export would say the same.
+    var tryAuthoredExport = document == null
     if (document != null) {
       when (val compiled = api.compileDocument(document.forDevice(device))) {
         is UiBuilderApi.Fetch.Ok ->
           return PreviewContent.Document(compiled.value, revision, fitted = true)
         is UiBuilderApi.Fetch.Refused -> {
           if (compiled.unauthorized) return refusedAccess(compiled)
-          if (!compiled.unsupported) reasons += "Remote Compose: ${compiled.describe()}"
+          if (compiled.unsupported) tryAuthoredExport = true
+          else reasons += "Remote Compose: ${compiled.describe()}"
         }
       }
     }
@@ -219,7 +224,7 @@ internal constructor(
       }
       is Source.Hosted -> {
         val link = source.link
-        if (document == null) {
+        if (tryAuthoredExport) {
           when (val authored = api.exportRc(link.designId, link.revision)) {
             is UiBuilderApi.Fetch.Ok ->
               return PreviewContent.Document(authored.value, revision, fitted = false)
