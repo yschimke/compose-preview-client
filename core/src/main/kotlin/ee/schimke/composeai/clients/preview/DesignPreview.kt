@@ -22,10 +22,12 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 
@@ -242,22 +244,40 @@ internal constructor(
               if (!authored.unsupported) reasons += "export.rc: ${authored.describe()}"
           }
         }
-        return when (val native = api.nativePreview(link.designId, link.revision)) {
-          is UiBuilderApi.Fetch.Ok -> native.value.toContent(link, reasons)
+        when (val native = api.nativePreview(link.designId, link.revision)) {
+          is UiBuilderApi.Fetch.Ok ->
+            native.value.toContent(link, reasons)?.let {
+              return it
+            }
           is UiBuilderApi.Fetch.Refused -> {
             if (native.unauthorized) return refusedAccess(native)
             reasons += "native render: ${native.describe()}"
-            PreviewContent.Failed(reasons.joinToString("\n"))
+          }
+        }
+        // Nothing live to show: a still of the design, so the device shows the design and the
+        // reasons, rather than only the reasons. Fitted to this device when the host can render a
+        // supplied document; otherwise as authored.
+        if (document != null) {
+          (api.renderDocumentPng(document.forDevice(device)) as? UiBuilderApi.Fetch.Ok)?.let {
+            return PreviewContent.Still(it.value, revision, reasons)
+          }
+        }
+        return when (val png = api.exportPng(link.designId, link.revision)) {
+          is UiBuilderApi.Fetch.Ok -> PreviewContent.Still(png.value, revision, reasons)
+          is UiBuilderApi.Fetch.Refused -> {
+            if (png.unauthorized) return refusedAccess(png)
+            PreviewContent.Failed((reasons + "export.png: ${png.describe()}").joinToString("\n"))
           }
         }
       }
     }
   }
 
+  /** The native render as content; null when it produced nothing to show. */
   private fun UiBuilderApi.NativePreview.toContent(
     link: PreviewLink.Design,
-    reasons: List<String>,
-  ): PreviewContent {
+    reasons: MutableList<String>,
+  ): PreviewContent? {
     live?.let {
       val stream =
         SessionLink(
@@ -271,9 +291,8 @@ internal constructor(
     }
     val png = imageBase64?.let { runCatching { Base64.getDecoder().decode(it) }.getOrNull() }
     if (png != null) return PreviewContent.Still(png, revision, reasons + warnings)
-    return PreviewContent.Failed(
-      (reasons + listOfNotNull(compileError ?: "the host rendered no frame")).joinToString("\n")
-    )
+    reasons += "native render: " + (compileError ?: "the host rendered no frame")
+    return null
   }
 
   /** Follow the design's update socket, reconnecting until cancelled. */
@@ -313,8 +332,23 @@ internal constructor(
     val DEFAULT_DEBOUNCE: Duration = 250.milliseconds
     val DEFAULT_RECONNECT: Duration = 3.seconds
 
-    private fun UiBuilderApi.Fetch.Refused.describe(): String =
-      message.lineSequence().firstOrNull { it.isNotBlank() }?.take(300) ?: "HTTP $status"
+    /**
+     * One line for the person: a native-render refusal's `code` and first reason when the body is
+     * that JSON, else the body's first line.
+     */
+    private fun UiBuilderApi.Fetch.Refused.describe(): String {
+      val refusal =
+        runCatching { UiBuilderApi.json.parseToJsonElement(message).jsonObject }.getOrNull()
+      val code = (refusal?.get("code") as? JsonPrimitive)?.contentOrNull
+      if (code != null) {
+        val reasons =
+          (refusal["reasons"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+        val first = reasons?.firstOrNull()?.take(200)
+        val more = (reasons?.size ?: 0) - 1
+        return listOfNotNull(code, first, if (more > 0) "+$more more" else null).joinToString(" · ")
+      }
+      return message.lineSequence().firstOrNull { it.isNotBlank() }?.take(300) ?: "HTTP $status"
+    }
 
     private fun JsonObject.revision(): Long? = (this["revision"] as? JsonPrimitive)?.longOrNull
 

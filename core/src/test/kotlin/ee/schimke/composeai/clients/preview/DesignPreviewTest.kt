@@ -188,12 +188,46 @@ class DesignPreviewTest {
             respond("no lowering", HttpStatusCode.UnprocessableEntity)
           "/api/ui-builder/v1/designs/d1/native-preview" ->
             respond("""{"designId":"d1","revision":7,"compileError":"nope"}""", headers = json)
+          "/api/ui-builder/v1/documents/export.png",
+          "/api/ui-builder/v1/designs/d1/export.png" -> respond("", HttpStatusCode.NotFound)
           else -> error("unexpected ${request.url}")
         }
       }
       assertThat(p.load(phone)).isInstanceOf(PreviewContent.Failed::class.java)
       assertThat(requests.map { it.url.encodedPath })
         .doesNotContain("/api/ui-builder/v1/designs/d1/export.rc")
+    }
+
+  @Test
+  fun refusedNativeRenderFallsBackToTheDesignsPng() =
+    runBlocking<Unit> {
+      val png = byteArrayOf(-119, 80, 78, 71)
+      val p = preview { request ->
+        when (request.url.encodedPath) {
+          "/api/ui-builder/v1/designs/d1" -> respond(designJson, headers = json)
+          // A host with no Remote Compose lane (preview.coo.ee today).
+          "/api/ui-builder/v1/documents/export.rc",
+          "/api/ui-builder/v1/designs/d1/export.rc",
+          "/api/ui-builder/v1/documents/export.png" -> respond("", HttpStatusCode.NotFound)
+          // The refusal preview.coo.ee gives a Material 3 screen with a search bar.
+          "/api/ui-builder/v1/designs/d1/native-preview" ->
+            respond(
+              """{"schema":"compose-preview/ui-builder-native-preview-refusal/v1",
+                 "code":"UNPROVEN_CALL_SITE","reasons":["`m3/search-bar` has no call site","b"]}""",
+              HttpStatusCode.UnprocessableEntity,
+              json,
+            )
+          "/api/ui-builder/v1/designs/d1/export.png" -> respond(png)
+          else -> error("unexpected ${request.url}")
+        }
+      }
+      val content = p.load(phone) as PreviewContent.Still
+      assertThat(content.png).isEqualTo(png)
+      assertThat(content.revision).isEqualTo(7)
+      assertThat(content.reasons)
+        .containsExactly(
+          "native render: UNPROVEN_CALL_SITE · `m3/search-bar` has no call site · +1 more"
+        )
     }
 
   @Test

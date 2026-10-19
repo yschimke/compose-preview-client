@@ -72,6 +72,12 @@ class UiBuilderApi(
     return if (response.status.isSuccess()) Fetch.Ok(response.bodyAsBytes()) else response.refusal()
   }
 
+  /** The saved design rendered to a PNG at its own (authored) environment. */
+  suspend fun exportPng(designId: String, revision: Long? = null): Fetch<ByteArray> {
+    val response = client.get(designUrl(designId, "/export.png", revision)) { authorize() }
+    return if (response.status.isSuccess()) Fetch.Ok(response.bodyAsBytes()) else response.refusal()
+  }
+
   /**
    * Compile and render the design with real Compose on the host. The reply names the live session
    * its frames stream from, when the host has one.
