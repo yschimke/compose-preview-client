@@ -22,6 +22,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      - name: Verify installed formatting hook
+        run: bash tests/git-hooks-test.sh
       - name: ktfmt
         run: ./gradlew ktfmtCheckAll --stacktrace
       - name: Core engine tests
