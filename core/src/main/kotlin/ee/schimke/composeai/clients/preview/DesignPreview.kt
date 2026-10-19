@@ -258,8 +258,9 @@ internal constructor(
         // reasons, rather than only the reasons. Fitted to this device when the host can render a
         // supplied document; otherwise as authored.
         if (document != null) {
-          (api.renderDocumentPng(document.forDevice(device)) as? UiBuilderApi.Fetch.Ok)?.let {
-            return PreviewContent.Still(it.value, revision, reasons)
+          when (val fitted = api.renderDocumentPng(document.forDevice(device))) {
+            is UiBuilderApi.Fetch.Ok -> return PreviewContent.Still(fitted.value, revision, reasons)
+            is UiBuilderApi.Fetch.Refused -> if (fitted.unauthorized) return refusedAccess(fitted)
           }
         }
         return when (val png = api.exportPng(link.designId, link.revision)) {

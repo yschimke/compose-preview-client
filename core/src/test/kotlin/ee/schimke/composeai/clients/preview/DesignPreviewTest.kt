@@ -231,6 +231,27 @@ class DesignPreviewTest {
     }
 
   @Test
+  fun fittedPngRefusingTheCredentialAsksToSignIn() =
+    runBlocking<Unit> {
+      val p = preview { request ->
+        when (request.url.encodedPath) {
+          "/api/ui-builder/v1/designs/d1" -> respond(designJson, headers = json)
+          "/api/ui-builder/v1/documents/export.rc",
+          "/api/ui-builder/v1/designs/d1/export.rc" -> respond("", HttpStatusCode.NotFound)
+          "/api/ui-builder/v1/designs/d1/native-preview" ->
+            respond(
+              """{"code":"UNPROVEN_CALL_SITE","reasons":["x"]}""",
+              HttpStatusCode.UnprocessableEntity,
+            )
+          "/api/ui-builder/v1/documents/export.png" -> respond("", HttpStatusCode.Forbidden)
+          "/api/ui-builder/v1/designs/d1/export.png" -> respond("", HttpStatusCode.NotFound)
+          else -> error("unexpected ${request.url}")
+        }
+      }
+      assertThat(p.load(phone)).isEqualTo(PreviewContent.NeedsSignIn(server, 403, signedIn = true))
+    }
+
+  @Test
   fun missingDesignSaysSoInsteadOfBlamingAccess() =
     runBlocking<Unit> {
       val p = preview { request ->
