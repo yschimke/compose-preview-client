@@ -223,11 +223,13 @@ internal constructor(
         return when (val png = api.renderDocumentPng(document)) {
           is UiBuilderApi.Fetch.Ok -> PreviewContent.Still(png.value, revision, reasons)
           is UiBuilderApi.Fetch.Refused ->
-            PreviewContent.Failed(
-              (reasons + "render: ${png.describe()}").joinToString("\n").ifBlank {
-                "This server can't render .uid files"
-              }
-            )
+            if (png.unauthorized) refusedAccess(png)
+            else
+              PreviewContent.Failed(
+                (reasons + "render: ${png.describe()}").joinToString("\n").ifBlank {
+                  "This server can't render .uid files"
+                }
+              )
         }
       }
       is Source.Hosted -> {

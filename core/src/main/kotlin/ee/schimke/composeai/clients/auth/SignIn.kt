@@ -3,6 +3,7 @@ package ee.schimke.composeai.clients.auth
 import ee.schimke.composeai.clients.preview.ServerAddress
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -66,8 +67,19 @@ class SignIn(
 
   fun run(label: String): Flow<SignInState> = flow {
     emit(SignInState.Requesting)
+    val opened =
+      try {
+        api.request(label)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        emit(
+          SignInState.Failed("Couldn't reach ${server.label}: ${e.message ?: e::class.simpleName}")
+        )
+        return@flow
+      }
     val request =
-      when (val opened = api.request(label)) {
+      when (opened) {
         is AccessGrantApi.Answer.Ok -> opened.value
         is AccessGrantApi.Answer.Refused -> {
           emit(SignInState.Failed(refusalMessage(opened)))
@@ -83,7 +95,15 @@ class SignIn(
 
     val deadline = clock() + request.expiresInSeconds * 1_000
     while (clock() < deadline) {
-      val answer = api.poll(request.requestId, request.deviceSecret, pollWait.inWholeSeconds)
+      val answer =
+        try {
+          api.poll(request.requestId, request.deviceSecret, pollWait.inWholeSeconds)
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          // A dropped connection or a timeout mid-wait: the request is still open on the server.
+          AccessGrantApi.Answer.Refused(0, e.message.orEmpty())
+        }
       val poll =
         when (answer) {
           is AccessGrantApi.Answer.Ok -> answer.value

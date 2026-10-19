@@ -103,6 +103,39 @@ class SignInTest {
     }
 
   @Test
+  fun unreachableServerFailsInsteadOfThrowing() =
+    runBlocking<Unit> {
+      val engine = MockEngine { throw java.io.IOException("connection refused") }
+      val api = AccessGrantApi(server, HttpClient(engine) { expectSuccess = false })
+      val last = SignIn(server, InMemoryGrantStore(), api).run("x").toList().last()
+      assertThat((last as SignInState.Failed).message).contains("connection refused")
+    }
+
+  @Test
+  fun droppedPollIsRetried() =
+    runBlocking<Unit> {
+      var polls = 0
+      val open = OPEN.replace("\"pollIntervalSeconds\":5", "\"pollIntervalSeconds\":0")
+      val engine = MockEngine { request ->
+        when (request.url.encodedPath) {
+          "/agent-access/request" -> respond(open, headers = json)
+          else ->
+            if (polls++ == 0) throw java.io.IOException("reset")
+            else respond("""{"status":"approved","token":"cpg_x"}""", headers = json)
+        }
+      }
+      val api = AccessGrantApi(server, HttpClient(engine) { expectSuccess = false })
+      val store = InMemoryGrantStore()
+      val last =
+        SignIn(server, store, api, clock = { 0L }, pollWait = kotlin.time.Duration.ZERO)
+          .run("x")
+          .toList()
+          .last()
+      assertThat(last).isInstanceOf(SignInState.SignedIn::class.java)
+      assertThat(store.get(server.httpBase)?.token).isEqualTo("cpg_x")
+    }
+
+  @Test
   fun signOutRevokesAndForgets() =
     runBlocking<Unit> {
       val store = InMemoryGrantStore()
