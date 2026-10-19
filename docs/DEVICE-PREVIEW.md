@@ -41,6 +41,11 @@ exists, and the first draw creates it. Without priming, a document whose layout 
    `setOverrides` (`widthPx`, `heightPx`, `density`, `fontScale`, `uiMode`, `localeTag`) on every
    (re)connect and device change. Touches are forwarded. Without a live lane, the first frame is
    shown as a still.
+4. **A still of the design**, when there's nothing live to show (the native render refuses, as it
+   does for a design using a component it can't place, or renders nothing). The still comes from
+   `POST /documents/export.png` fitted to the device where the host offers it, and otherwise from
+   `GET …/designs/{id}/export.png` as authored. The refusal's code and first reason are shown as a
+   notice.
 
 A `401`/`403` asks the device to [sign in](#signing-in); a `404` on the design says it doesn't
 exist.
@@ -59,7 +64,12 @@ These are compose-preview-server's UI-builder routes (`ServeUiBuilderRoutes`,
 ### On the hosted builder today
 
 `preview.coo.ee` doesn't have the Remote Compose export lane enabled, so `export.rc` routes answer
-`404` there and designs take step 3. A host started with the Remote Compose export lane enabled
+`404` there and designs take step 3. Checked live with a signed-in grant:
+
+- A private Material 3 design read fine. Its native render was refused (`UNPROVEN_CALL_SITE`, a
+  search bar), so step 4 showed its `export.png`.
+- A catalog preview that isn't Remote Compose streamed. Its first frame arrived at its own size,
+  then it was re-rendered at the phone's 1080 × 2400 once the app sent the device overrides. A host started with the Remote Compose export lane enabled
 serves steps 1 and 2.
 
 ## Your own documents in the UI builder
