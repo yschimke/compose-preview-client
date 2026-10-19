@@ -144,4 +144,31 @@ class SessionClientTest {
     second.listener!!.onText(frameWire(seq = 1))
     assertThat(client.frame.value!!.seq).isEqualTo(1L)
   }
+
+  @Test
+  fun callbacksFromPreviousConnectionToSameLinkCannotChangeCurrentSession() {
+    val first = FakeTransport()
+    val second = FakeTransport()
+    val transports = ArrayDeque(listOf<StreamTransport>(first, second))
+    val client = SessionClient { transports.removeFirst() }
+    client.connect(link)
+    first.listener!!.onOpen()
+    client.connect(link.copy())
+    second.listener!!.onOpen()
+    second.listener!!.onText(frameWire(seq = 1))
+
+    first.listener!!.onText(frameWire(seq = 99))
+    assertThat(client.frame.value!!.seq).isEqualTo(1L)
+    first.listener!!.onClosed(1000, "old socket closed")
+    assertThat(client.state.value).isEqualTo(SessionState.Connected(link))
+    first.listener!!.onFailure(IllegalStateException("old socket failed"))
+    assertThat(client.state.value).isEqualTo(SessionState.Connected(link))
+    first.listener!!.onOpen()
+
+    assertThat(client.state.value).isEqualTo(SessionState.Connected(link))
+    assertThat(client.frame.value!!.seq).isEqualTo(1L)
+    assertThat(second.sent).containsExactly(StreamMessages.requestFrame())
+    second.listener!!.onText(frameWire(seq = 2))
+    assertThat(client.frame.value!!.seq).isEqualTo(2L)
+  }
 }
