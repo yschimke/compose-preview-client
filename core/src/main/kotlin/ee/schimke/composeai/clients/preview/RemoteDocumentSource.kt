@@ -43,7 +43,10 @@ class RemoteDocumentSource(
     if (response.status == HttpStatusCode.NotModified) return Result.Unchanged
     if (!response.status.isSuccess()) {
       val body = runCatching { response.bodyAsText() }.getOrDefault("").take(500)
-      return Result.Failed("HTTP ${response.status.value}${if (body.isBlank()) "" else ": $body"}")
+      return Result.Failed(
+        "HTTP ${response.status.value}${if (body.isBlank()) "" else ": $body"}",
+        response.status.value,
+      )
     }
     etag = response.headers[HttpHeaders.ETag]
     lastModified = response.headers[HttpHeaders.LastModified]
@@ -78,7 +81,8 @@ class RemoteDocumentSource(
 
     data object Unchanged : Result
 
-    data class Failed(val message: String) : Result
+    /** [status] is the HTTP status when the server answered; 401/403 mean sign in. */
+    data class Failed(val message: String, val status: Int? = null) : Result
   }
 
   companion object {

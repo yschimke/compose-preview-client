@@ -35,7 +35,8 @@ has no host to route them to.
    (re)connect and device change. Touches are forwarded. Without a live lane, the first frame is
    shown as a still.
 
-A `401`/`403` stops with "open the link with a token"; a `404` on the design says it doesn't exist.
+A `401`/`403` asks the device to [sign in](#signing-in); a `404` on the design says it doesn't
+exist.
 A reload that fails after something is showing keeps the last good preview up and shows the problem
 as a notice.
 
@@ -53,6 +54,32 @@ These are compose-preview-server's UI-builder routes (`ServeUiBuilderRoutes`,
 `preview.coo.ee` doesn't have the Remote Compose export lane enabled, so `export.rc` routes answer
 `404` there and designs take step 3. A host started with the Remote Compose export lane enabled
 serves steps 1 and 2.
+
+## Signing in
+
+Private designs, and the native render's stream, need a credential. The apps get one with the
+server's own **agent access grant**, an RFC 8628 device grant (`/agent-access/…`, see
+compose-preview-server's `AGENT_ACCESS_GRANTS.md`), so nobody pastes the operator token into a
+phone:
+
+1. A preview the server refuses (401/403) shows **Sign in to <server>**.
+2. The app `POST`s `/agent-access/request` for scope `live` and capabilities `ui-builder-read`,
+   `ui-builder-export`: enough to read and compile a design and stream its render, never to edit
+   it. The label names the device ("Compose Device Preview on Google Pixel 9").
+3. The approval page opens in the browser. On the watch it opens **on the paired phone**. The app
+   shows the user code to check against the page. It builds the page URL from the server it asked,
+   and never follows a URL from the reply.
+4. The person approves, signed in to GitHub (or holding the operator token) in that browser. The
+   app's held poll (`/agent-access/poll`, 8 s waits) collects the token, stores it for that server
+   and reopens the preview with it.
+
+Every later link to that server uses the stored grant until it expires (8 h by default, the
+server's ceiling). An expired grant, or one that doesn't reach a design, asks again. The phone's
+connect screen shows who approved the grant and when it expires, with **Sign out**, which revokes
+it on the server. Grants are kept in the app's private preferences and the apps opt out of backup.
+A server restart drops every grant, so the next preview asks to sign in again.
+
+An operator token typed into the connect screen, or a link's own `?token=`, still takes precedence.
 
 ## Links
 

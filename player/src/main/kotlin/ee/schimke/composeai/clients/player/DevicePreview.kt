@@ -24,10 +24,12 @@ import ee.schimke.composeai.clients.preview.DeviceProfile
 import ee.schimke.composeai.clients.preview.PreviewContent
 import ee.schimke.composeai.clients.preview.PreviewLink
 import ee.schimke.composeai.clients.preview.RemoteDocumentSource
+import ee.schimke.composeai.clients.preview.ServerAddress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -46,7 +48,18 @@ data class PreviewOverlayState(
   val following: Boolean = false,
   /** The last host action the document fired (`id` + payload), for a moment. */
   val action: String? = null,
+  /**
+   * The server wants this device signed in before it shows anything (it answered 401/403). The
+   * app's chrome offers [ee.schimke.composeai.clients.auth.SignIn] for it, then reopens the link.
+   */
+  val signIn: SignInNeeded? = null,
 )
+
+/**
+ * [server] refused the preview. [hadCredential] separates "sign in" from "your sign-in expired or
+ * doesn't reach this" — the chrome words them differently, and both are fixed by signing in again.
+ */
+data class SignInNeeded(val server: ServerAddress, val status: Int, val hadCredential: Boolean)
 
 /**
  * A full-screen device preview of [link]. Remote Compose documents — `.rc` files, and designs that
@@ -117,14 +130,25 @@ fun DevicePreview(
       is PreviewLink.RemoteDocument -> {
         val state by
           produceState(DocumentState(), link) {
-            RemoteDocumentSource(link.url, link.token).watch().collect { result ->
+            // Polls until cancelled — or until the server refuses this device, which more polling
+            // can't change: then it stops and asks for a sign-in.
+            RemoteDocumentSource(link.url, link.token).watch().first { result ->
+              val refused = result is RemoteDocumentSource.Result.Failed && result.status in AUTH_STATUSES
               value =
                 when (result) {
                   is RemoteDocumentSource.Result.Changed -> DocumentState(result.bytes)
                   is RemoteDocumentSource.Result.Failed ->
-                    value.copy(failure = result.message, loaded = true)
+                    value.copy(
+                      failure = result.message,
+                      loaded = true,
+                      signIn =
+                        link.authServer
+                          ?.takeIf { refused }
+                          ?.let { SignInNeeded(it, result.status ?: 401, link.token != null) },
+                    )
                   RemoteDocumentSource.Result.Unchanged -> value
                 }
+              refused
             }
           }
         DocumentContent(state, link.label, "Playing on device · live", overlay, action, onAction)
@@ -152,7 +176,10 @@ private data class DocumentState(
   val bytes: ByteArray? = null,
   val failure: String? = null,
   val loaded: Boolean = bytes != null,
+  val signIn: SignInNeeded? = null,
 )
+
+private val AUTH_STATUSES = setOf(401, 403)
 
 @Composable
 private fun DocumentContent(
@@ -177,9 +204,10 @@ private fun DocumentContent(
       label = label,
       mode = if (showing) mode else null,
       loading = !state.loaded,
-      error = playerError ?: state.failure.takeIf { state.bytes == null },
-      notice = state.failure.takeIf { state.bytes != null },
+      error = playerError ?: state.failure.takeIf { state.bytes == null && state.signIn == null },
+      notice = state.failure.takeIf { state.bytes != null && state.signIn == null },
       action = action,
+      signIn = state.signIn,
     )
   )
 }
@@ -222,6 +250,7 @@ private fun DesignContent(
       }
     }
     is PreviewContent.Failed,
+    is PreviewContent.NeedsSignIn,
     PreviewContent.Loading -> Unit
   }
   overlay(state.toOverlay(label, playerError, action))
@@ -241,6 +270,8 @@ private fun DesignPreviewState.toOverlay(label: String, playerError: String?, ac
       }?.let { mode -> revisionOf(content)?.let { "$mode · r$it" } ?: mode },
     loading = content is PreviewContent.Loading || reloading,
     error = playerError ?: (content as? PreviewContent.Failed)?.message,
+    signIn =
+      (content as? PreviewContent.NeedsSignIn)?.let { SignInNeeded(it.server, it.status, it.signedIn) },
     notice =
       notice
         ?: (content as? PreviewContent.Stream)?.warnings?.takeIf { it.isNotEmpty() }?.joinToString()

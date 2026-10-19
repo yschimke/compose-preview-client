@@ -94,6 +94,7 @@ dependencies {
   implementation(libs.compose.ui.tooling.preview)
   implementation(libs.activity.compose)
   implementation(libs.wear.compose.material3)
+  implementation(libs.wear.remote.interactions)
   implementation(libs.wear.compose.foundation)
   implementation(libs.wear.compose.ui.tooling)
   implementation(libs.wear.tooling.preview)

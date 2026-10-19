@@ -215,8 +215,8 @@ class DesignPreviewTest {
   fun refusedAccessSaysSo() =
     runBlocking<Unit> {
       val p = preview { respond("authentication is required", HttpStatusCode.Unauthorized) }
-      val content = p.load(phone) as PreviewContent.Failed
-      assertThat(content.message).contains("401")
+      val content = p.load(phone) as PreviewContent.NeedsSignIn
+      assertThat(content).isEqualTo(PreviewContent.NeedsSignIn(server, 401, signedIn = true))
     }
 
   @Test

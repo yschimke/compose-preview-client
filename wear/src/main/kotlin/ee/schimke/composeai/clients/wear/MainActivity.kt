@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import ee.schimke.composeai.clients.KtorStreamTransport
 import ee.schimke.composeai.clients.StreamTransport
 import ee.schimke.composeai.clients.discovery.DiscoveredSession
+import ee.schimke.composeai.clients.player.SharedPrefsGrantStore
 import ee.schimke.composeai.clients.preview.PreviewLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -28,10 +29,11 @@ class MainActivity : ComponentActivity() {
   private val link = MutableStateFlow<PreviewLink?>(null)
   private val discovered = MutableStateFlow<List<DiscoveredSession>>(emptyList())
   private val discovery by lazy { NsdSessionDiscovery(applicationContext) }
+  private val grants by lazy { SharedPrefsGrantStore(applicationContext) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    link.value = resolveLink(intent)
+    link.value = resolveLink(intent)?.withStoredGrant()
     discovery.sessions.onEach { discovered.value = it }.launchIn(lifecycleScope)
     // Keep the watch awake (out of ambient) while a preview is up.
     link
@@ -47,7 +49,10 @@ class MainActivity : ComponentActivity() {
       SessionViewerApp(
         link = current,
         discoveredSessions = sessions,
-        onConnect = { link.value = it },
+        grants = grants,
+        onConnect = { link.value = it.withStoredGrant() },
+        // Signed in from a refused preview: reopen it with the new grant.
+        onSignedIn = { grant -> link.value?.let { link.value = it.withToken(grant.token) } },
         onDisconnect = { link.value = null },
       )
     }
@@ -56,7 +61,7 @@ class MainActivity : ComponentActivity() {
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    resolveLink(intent)?.let { link.value = it }
+    resolveLink(intent)?.let { link.value = it.withStoredGrant() }
   }
 
   override fun onResume() {
@@ -67,6 +72,13 @@ class MainActivity : ComponentActivity() {
   override fun onPause() {
     discovery.stop()
     super.onPause()
+  }
+
+  /** A link without its own credential uses this watch's grant for its server, if it has one. */
+  private fun PreviewLink.withStoredGrant(): PreviewLink {
+    if (authToken != null) return this
+    val server = authServer ?: return this
+    return grants.valid(server)?.let { withToken(it.token) } ?: this
   }
 
   private fun resolveLink(intent: Intent?): PreviewLink? =

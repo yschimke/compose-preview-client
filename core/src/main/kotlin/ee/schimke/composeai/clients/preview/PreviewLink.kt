@@ -98,6 +98,39 @@ sealed interface PreviewLink {
       get() = displayName(uri)
   }
 
+  /** The server a credential for this link belongs to; null for a file on this device. */
+  val authServer: ServerAddress?
+    get() =
+      when (this) {
+        is Design -> server
+        is DesignFile -> server
+        is RemoteDocument -> runCatching { ServerAddress.of(URI(url)) }.getOrNull()
+        is Stream ->
+          runCatching { ServerAddress(session.host, session.port, session.secure) }.getOrNull()
+        is LocalDocument -> null
+      }
+
+  /** The credential this link carries, if any. */
+  val authToken: String?
+    get() =
+      when (this) {
+        is Design -> token
+        is DesignFile -> token
+        is RemoteDocument -> token
+        is Stream -> session.token.ifEmpty { null }
+        is LocalDocument -> null
+      }
+
+  /** This link presenting [token] instead (a grant from signing in). */
+  fun withToken(token: String): PreviewLink =
+    when (this) {
+      is Design -> copy(token = token)
+      is DesignFile -> copy(token = token)
+      is RemoteDocument -> copy(token = token)
+      is Stream -> copy(session = session.copy(token = token))
+      is LocalDocument -> this
+    }
+
   companion object {
     const val RC_EXTENSION: String = ".rc"
     const val UID_EXTENSION: String = ".uid"

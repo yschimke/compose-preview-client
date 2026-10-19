@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import ee.schimke.composeai.clients.KtorStreamTransport
 import ee.schimke.composeai.clients.StreamTransport
 import ee.schimke.composeai.clients.player.LocalFiles
+import ee.schimke.composeai.clients.player.SharedPrefsGrantStore
 import ee.schimke.composeai.clients.preview.PreviewLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
     MutableStateFlow<List<ee.schimke.composeai.clients.discovery.DiscoveredSession>>(emptyList())
   private val discovery by lazy { NsdSessionDiscovery(applicationContext) }
   private val settings by lazy { UiBuilderSettings(applicationContext) }
+  private val grants by lazy { SharedPrefsGrantStore(applicationContext) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -62,9 +64,12 @@ class MainActivity : ComponentActivity() {
           link = current,
           discoveredSessions = sessions,
           settings = settings,
+          grants = grants,
           problem = message,
           onOpen = { open(it) },
           onOpenFile = { uri -> open(fileLink(uri)) },
+          // Signed in from a refused preview: reopen it with the new grant.
+          onSignedIn = { grant -> link.value?.let { link.value = it.withToken(grant.token) } },
           onDisconnect = { link.value = null },
         )
       }
@@ -90,8 +95,15 @@ class MainActivity : ComponentActivity() {
   private fun open(target: PreviewLink?) {
     if (target != null) {
       problem.value = null
-      link.value = target
+      link.value = target.withStoredGrant()
     }
+  }
+
+  /** A link without its own credential uses this device's grant for its server, if it has one. */
+  private fun PreviewLink.withStoredGrant(): PreviewLink {
+    if (authToken != null) return this
+    val server = authServer ?: return this
+    return grants.valid(server)?.let { withToken(it.token) } ?: this
   }
 
   /** A VIEW intent's data is the tapped link or opened file; null on a plain launcher start. */

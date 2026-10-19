@@ -51,6 +51,15 @@ import ee.schimke.composeai.clients.SessionLink
 import ee.schimke.composeai.clients.SessionState
 import ee.schimke.composeai.clients.SessionTarget
 import ee.schimke.composeai.clients.discovery.DiscoveredSession
+import ee.schimke.composeai.clients.auth.AccessGrant
+import ee.schimke.composeai.clients.auth.GrantStore
+import ee.schimke.composeai.clients.auth.SignIn
+import ee.schimke.composeai.clients.preview.ServerAddress
+import java.text.DateFormat
+import java.util.Date
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import ee.schimke.composeai.clients.player.DevicePreview
 import ee.schimke.composeai.clients.player.LocalFiles
 import ee.schimke.composeai.clients.player.PreviewOverlayState
@@ -70,13 +79,34 @@ fun SessionViewerApp(
   link: PreviewLink?,
   discoveredSessions: List<DiscoveredSession>,
   settings: UiBuilderSettings,
+  grants: GrantStore,
   problem: String?,
   onOpen: (PreviewLink) -> Unit,
   onOpenFile: (String) -> Unit,
+  onSignedIn: (AccessGrant) -> Unit,
   onDisconnect: () -> Unit,
 ) {
+  var signingInTo by remember { mutableStateOf<ServerAddress?>(null) }
+  // Grants live in preferences, which Compose can't observe; bump to re-read after a change.
+  var accountVersion by remember { mutableIntStateOf(0) }
+  val scope = rememberCoroutineScope()
   Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-    if (link == null) {
+    val server = signingInTo
+    if (link == null && server != null) {
+      BackHandler { signingInTo = null }
+      Box(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), Alignment.Center) {
+        SignInPanel(
+          server,
+          grants,
+          onSignedIn = {
+            signingInTo = null
+            accountVersion++
+            onSignedIn(it)
+          },
+          onCancel = { signingInTo = null },
+        )
+      }
+    } else if (link == null) {
       var serverUrl by remember { mutableStateOf(settings.serverUrl) }
       var token by remember { mutableStateOf(settings.token.orEmpty()) }
       ConnectScreen(
@@ -91,12 +121,28 @@ fun SessionViewerApp(
           token = it
           settings.token = it
         },
+        account =
+          remember(serverUrl, accountVersion) {
+            UiBuilderSettings.parseServer(serverUrl)?.let { AccountState(it, grants.valid(it)) }
+          },
+        onSignIn = { signingInTo = it },
+        onSignOut = { server ->
+          scope.launch {
+            SignIn(server, grants).signOut()
+            accountVersion++
+          }
+        },
         problem = problem,
         onOpen = onOpen,
         onOpenFile = onOpenFile,
       )
     } else {
-      PreviewScreen(link = link, onDisconnect = onDisconnect)
+      PreviewScreen(
+        link = link,
+        grants = grants,
+        onSignedIn = onSignedIn,
+        onDisconnect = onDisconnect,
+      )
     }
   }
 }
@@ -106,7 +152,12 @@ fun SessionViewerApp(
  * preview of, with only a brief label and any problems drawn over it. Back leaves.
  */
 @Composable
-fun PreviewScreen(link: PreviewLink, onDisconnect: () -> Unit) {
+fun PreviewScreen(
+  link: PreviewLink,
+  grants: GrantStore,
+  onSignedIn: (AccessGrant) -> Unit,
+  onDisconnect: () -> Unit,
+) {
   BackHandler(onBack = onDisconnect)
   Box(Modifier.fillMaxSize().background(Color.Black)) {
     DevicePreview(
@@ -114,7 +165,11 @@ fun PreviewScreen(link: PreviewLink, onDisconnect: () -> Unit) {
       stream = { session, device ->
         SessionScreen(link = session, device = device, onDisconnect = onDisconnect)
       },
-      overlay = { PreviewChrome(it, onBack = onDisconnect) },
+      overlay = { state ->
+        val needed = state.signIn
+        if (needed != null) SignInOverlay(needed, grants, onSignedIn, onBack = onDisconnect)
+        else PreviewChrome(state, onBack = onDisconnect)
+      },
     )
   }
 }
@@ -314,6 +369,9 @@ fun ConnectScreen(
   onServerUrlChange: (String) -> Unit,
   token: String,
   onTokenChange: (String) -> Unit,
+  account: AccountState?,
+  onSignIn: (ServerAddress) -> Unit,
+  onSignOut: (ServerAddress) -> Unit,
   problem: String?,
   onOpen: (PreviewLink) -> Unit,
   onOpenFile: (String) -> Unit,
@@ -379,10 +437,11 @@ fun ConnectScreen(
       modifier = Modifier.fillMaxWidth(),
       singleLine = true,
     )
+    account?.let { AccountRow(it, onSignIn, onSignOut) }
     OutlinedTextField(
       value = token,
       onValueChange = onTokenChange,
-      label = { Text("Token (optional)") },
+      label = { Text("Operator token (optional)") },
       modifier = Modifier.fillMaxWidth(),
       singleLine = true,
     )
@@ -399,6 +458,37 @@ fun ConnectScreen(
         )
       }
     }
+  }
+}
+
+/** Whether this device is signed in to [server], for the connect screen. */
+data class AccountState(val server: ServerAddress, val grant: AccessGrant?)
+
+@Composable
+private fun AccountRow(
+  account: AccountState,
+  onSignIn: (ServerAddress) -> Unit,
+  onSignOut: (ServerAddress) -> Unit,
+) {
+  Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    val grant = account.grant
+    Text(
+      if (grant == null) "Not signed in to ${account.server.label}"
+      else
+        buildString {
+          append("Signed in")
+          grant.approvedBy?.let { append(" · approved by ").append(it) }
+          grant.expiresAtMillis?.let {
+            append(" · until ")
+            append(DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it)))
+          }
+        },
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.weight(1f),
+    )
+    if (grant == null) TextButton(onClick = { onSignIn(account.server) }) { Text("Sign in") }
+    else TextButton(onClick = { onSignOut(account.server) }) { Text("Sign out") }
   }
 }
 
@@ -445,6 +535,9 @@ private fun ConnectScreenSample(sessions: List<DiscoveredSession>, problem: Stri
     onServerUrlChange = {},
     token = "",
     onTokenChange = {},
+    account = AccountState(ServerAddress("preview.coo.ee", 443, true), grant = null),
+    onSignIn = {},
+    onSignOut = {},
     problem = problem,
     onOpen = {},
     onOpenFile = {},

@@ -34,6 +34,8 @@ import ee.schimke.composeai.clients.SessionLink
 import ee.schimke.composeai.clients.SessionState
 import ee.schimke.composeai.clients.SessionTarget
 import ee.schimke.composeai.clients.discovery.DiscoveredSession
+import ee.schimke.composeai.clients.auth.AccessGrant
+import ee.schimke.composeai.clients.auth.GrantStore
 import ee.schimke.composeai.clients.player.DevicePreview
 import ee.schimke.composeai.clients.player.LocalFiles
 import ee.schimke.composeai.clients.player.PreviewOverlayState
@@ -50,14 +52,16 @@ import kotlinx.coroutines.flow.filterIsInstance
 fun SessionViewerApp(
   link: PreviewLink?,
   discoveredSessions: List<DiscoveredSession>,
+  grants: GrantStore,
   onConnect: (PreviewLink) -> Unit,
+  onSignedIn: (AccessGrant) -> Unit,
   onDisconnect: () -> Unit,
 ) {
   MaterialTheme {
     if (link == null) {
       ConnectScreen(discoveredSessions, onConnect)
     } else {
-      PreviewScreen(link, onDisconnect)
+      PreviewScreen(link, grants, onSignedIn, onDisconnect)
     }
   }
 }
@@ -68,13 +72,22 @@ fun SessionViewerApp(
  * back leaves.
  */
 @Composable
-fun PreviewScreen(link: PreviewLink, onDisconnect: () -> Unit) {
+fun PreviewScreen(
+  link: PreviewLink,
+  grants: GrantStore,
+  onSignedIn: (AccessGrant) -> Unit,
+  onDisconnect: () -> Unit,
+) {
   BackHandler(onBack = onDisconnect)
   Box(Modifier.fillMaxSize().background(Color.Black)) {
     DevicePreview(
       link = link,
       stream = { session, device -> SessionScreen(session, onDisconnect, device) },
-      overlay = { PreviewChrome(it, onBack = onDisconnect) },
+      overlay = { state ->
+        val needed = state.signIn
+        if (needed != null) WearSignIn(needed, grants, onSignedIn, onBack = onDisconnect)
+        else PreviewChrome(state, onBack = onDisconnect)
+      },
     )
   }
 }
