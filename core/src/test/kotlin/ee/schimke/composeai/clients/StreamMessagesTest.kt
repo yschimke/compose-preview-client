@@ -65,7 +65,8 @@ class StreamMessagesTest {
   fun inputClickCarriesKindAndPixelsMirroringDaemonSerialNames() {
     val obj = json.parseToJsonElement(StreamMessages.input(InputEvent.click(12, 34))).jsonObject
     assertThat((obj["type"] as JsonPrimitive).contentOrNull).isEqualTo("input")
-    val input = obj["input"]!!.jsonObject
+    assertThat(obj.containsKey("input")).isFalse()
+    val input = obj
     assertThat((input["kind"] as JsonPrimitive).contentOrNull).isEqualTo("click")
     assertThat((input["pixelX"] as JsonPrimitive).content).isEqualTo("12")
     assertThat((input["pixelY"] as JsonPrimitive).content).isEqualTo("34")
@@ -73,15 +74,14 @@ class StreamMessagesTest {
 
   @Test
   fun inputKeyAndRotaryCarryTheirFields() {
-    val key = innerInput(StreamMessages.input(InputEvent.keyDown("Enter")))
+    val key = inputMessage(StreamMessages.input(InputEvent.keyDown("Enter")))
     assertThat((key["kind"] as JsonPrimitive).contentOrNull).isEqualTo("keyDown")
     assertThat((key["keyCode"] as JsonPrimitive).contentOrNull).isEqualTo("Enter")
 
-    val rotary = innerInput(StreamMessages.input(InputEvent.rotaryScroll(-3.5f)))
+    val rotary = inputMessage(StreamMessages.input(InputEvent.rotaryScroll(-3.5f)))
     assertThat((rotary["kind"] as JsonPrimitive).contentOrNull).isEqualTo("rotaryScroll")
     assertThat((rotary["scrollDeltaY"] as JsonPrimitive).content.toFloat()).isEqualTo(-3.5f)
   }
 
-  private fun innerInput(wire: String): JsonObject =
-    json.parseToJsonElement(wire).jsonObject["input"]!!.jsonObject
+  private fun inputMessage(wire: String): JsonObject = json.parseToJsonElement(wire).jsonObject
 }
