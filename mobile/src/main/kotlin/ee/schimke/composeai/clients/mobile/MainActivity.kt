@@ -17,6 +17,7 @@ import ee.schimke.composeai.clients.KtorStreamTransport
 import ee.schimke.composeai.clients.StreamTransport
 import ee.schimke.composeai.clients.player.LocalFiles
 import ee.schimke.composeai.clients.player.SharedPrefsGrantStore
+import ee.schimke.composeai.clients.preview.DocsApi
 import ee.schimke.composeai.clients.preview.PreviewLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -68,6 +69,7 @@ class MainActivity : ComponentActivity() {
           problem = message,
           onOpen = { open(it) },
           onOpenFile = { uri -> open(fileLink(uri)) },
+          onUpload = { uri -> upload(uri) },
           // Signed in from a refused preview: reopen it with the new grant.
           onSignedIn = { grant -> link.value?.let { link.value = it.withToken(grant.token) } },
           onDisconnect = { link.value = null },
@@ -104,6 +106,25 @@ class MainActivity : ComponentActivity() {
     if (authToken != null) return this
     val server = authServer ?: return this
     return grants.valid(server)?.let { withToken(it.token) } ?: this
+  }
+
+  /**
+   * Publishes a picked `.rc` to the UI-builder server's document lane. Sent with the operator token
+   * if one is set, never a sign-in grant: the server's ingest gate refuses grants.
+   */
+  private suspend fun upload(uri: String): DocsApi.Upload {
+    val server = settings.server ?: return DocsApi.Upload.Refused("Set a UI builder server first.")
+    val bytes =
+      try {
+        LocalFiles.read(this, uri)
+      } catch (e: Exception) {
+        return DocsApi.Upload.Refused(e.message ?: "can't read the file")
+      }
+    return try {
+      DocsApi(server, settings.token).upload(LocalFiles.displayName(this, uri), bytes)
+    } catch (e: Exception) {
+      DocsApi.Upload.Refused(e.message ?: "upload failed")
+    }
   }
 
   /** A VIEW intent's data is the tapped link or opened file; null on a plain launcher start. */

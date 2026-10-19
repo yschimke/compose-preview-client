@@ -51,7 +51,10 @@ import ee.schimke.composeai.clients.SessionLink
 import ee.schimke.composeai.clients.SessionState
 import ee.schimke.composeai.clients.SessionTarget
 import ee.schimke.composeai.clients.discovery.DiscoveredSession
+import android.content.Intent
 import ee.schimke.composeai.clients.auth.AccessGrant
+import ee.schimke.composeai.clients.player.SignInNeeded
+import ee.schimke.composeai.clients.preview.DocsApi
 import ee.schimke.composeai.clients.auth.GrantStore
 import ee.schimke.composeai.clients.auth.SignIn
 import ee.schimke.composeai.clients.preview.ServerAddress
@@ -83,6 +86,7 @@ fun SessionViewerApp(
   problem: String?,
   onOpen: (PreviewLink) -> Unit,
   onOpenFile: (String) -> Unit,
+  onUpload: suspend (String) -> DocsApi.Upload,
   onSignedIn: (AccessGrant) -> Unit,
   onDisconnect: () -> Unit,
 ) {
@@ -90,6 +94,7 @@ fun SessionViewerApp(
   // Grants live in preferences, which Compose can't observe; bump to re-read after a change.
   var accountVersion by remember { mutableIntStateOf(0) }
   val scope = rememberCoroutineScope()
+  var upload by remember { mutableStateOf<UploadState?>(null) }
   Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
     val server = signingInTo
     if (link == null && server != null) {
@@ -135,6 +140,17 @@ fun SessionViewerApp(
         problem = problem,
         onOpen = onOpen,
         onOpenFile = onOpenFile,
+        upload = upload,
+        onUpload = { uri ->
+          upload = UploadState.Uploading
+          scope.launch {
+            upload =
+              when (val result = onUpload(uri)) {
+                is DocsApi.Upload.Published -> UploadState.Done(result)
+                is DocsApi.Upload.Refused -> UploadState.Failed(result.message)
+              }
+          }
+        },
       )
     } else {
       PreviewScreen(
@@ -166,9 +182,21 @@ fun PreviewScreen(
         SessionScreen(link = session, device = device, onDisconnect = onDisconnect)
       },
       overlay = { state ->
-        val needed = state.signIn
-        if (needed != null) SignInOverlay(needed, grants, onSignedIn, onBack = onDisconnect)
-        else PreviewChrome(state, onBack = onDisconnect)
+        // A sign-in the preview needs, or one the person chose to get more (a live stream).
+        var accepted by remember(state.signInOffer) { mutableStateOf(false) }
+        val needed =
+          state.signIn
+            ?: state.signInOffer
+              ?.takeIf { accepted }
+              ?.let { SignInNeeded(it, status = 401, hadCredential = false) }
+        if (needed != null)
+          SignInOverlay(
+            needed,
+            grants,
+            onSignedIn,
+            onBack = { if (state.signIn == null) accepted = false else onDisconnect() },
+          )
+        else PreviewChrome(state, onBack = onDisconnect, onSignIn = { accepted = true })
       },
     )
   }
@@ -218,7 +246,7 @@ fun SessionScreen(
  * a moment and fade, so the screen is the design's. Problems stay until they're resolved.
  */
 @Composable
-fun PreviewChrome(state: PreviewOverlayState, onBack: () -> Unit) {
+fun PreviewChrome(state: PreviewOverlayState, onBack: () -> Unit, onSignIn: () -> Unit = {}) {
   if (state.error != null) {
     MessageOverlay(title = "Can't preview ${state.label}", detail = state.error, onBack = onBack)
     return
@@ -269,6 +297,9 @@ fun PreviewChrome(state: PreviewOverlayState, onBack: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
           )
         }
+      }
+      state.signInOffer?.let { server ->
+        Button(onClick = onSignIn) { Text("Sign in to ${server.label}") }
       }
     }
   }
@@ -375,6 +406,8 @@ fun ConnectScreen(
   problem: String?,
   onOpen: (PreviewLink) -> Unit,
   onOpenFile: (String) -> Unit,
+  upload: UploadState? = null,
+  onUpload: (String) -> Unit = {},
 ) {
   var text by remember { mutableStateOf("") }
   val parsed = remember(text) { PreviewLink.parse(text) }
@@ -416,6 +449,7 @@ fun ConnectScreen(
     OutlinedButton(onClick = { picker.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
       Text("Open a .rc or .uid file")
     }
+    UploadRow(upload, onUpload, onOpen)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
       Text(
         "Samples",
@@ -461,6 +495,79 @@ fun ConnectScreen(
   }
 }
 
+/** An upload of one of your own `.rc` documents to the UI-builder server's document lane. */
+sealed interface UploadState {
+  data object Uploading : UploadState
+
+  data class Done(val published: DocsApi.Upload.Published) : UploadState
+
+  data class Failed(val message: String) : UploadState
+}
+
+/**
+ * Publishes a `.rc` of your own to the server (`POST /docs`) and hands back its `/d/<id>` link:
+ * open it on any device, or paste it into a UI-builder `remote-compose/document` node, which plays
+ * exactly that URL.
+ */
+@Composable
+private fun UploadRow(
+  upload: UploadState?,
+  onUpload: (String) -> Unit,
+  onOpen: (PreviewLink) -> Unit,
+) {
+  val context = LocalContext.current
+  val currentOnUpload by rememberUpdatedState(onUpload)
+  val picker =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      uri?.let { currentOnUpload(it.toString()) }
+    }
+  OutlinedButton(
+    onClick = { picker.launch(arrayOf("*/*")) },
+    enabled = upload != UploadState.Uploading,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Text(if (upload == UploadState.Uploading) "Uploading…" else "Share a .rc of your own")
+  }
+  when (upload) {
+    is UploadState.Done ->
+      Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text(upload.published.permalink, style = MaterialTheme.typography.bodyMedium)
+          Text(
+            "Plays in a browser, on another device, or in a UI-builder design's Remote Compose " +
+              "document node." +
+              (upload.published.expiresIn?.let { " Expires in $it." } ?: ""),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Row {
+            TextButton(onClick = { PreviewLink.parse(upload.published.permalink)?.let(onOpen) }) {
+              Text("Play")
+            }
+            TextButton(
+              onClick = {
+                context.startActivity(
+                  Intent.createChooser(
+                    Intent(Intent.ACTION_SEND)
+                      .setType("text/plain")
+                      .putExtra(Intent.EXTRA_TEXT, upload.published.permalink),
+                    null,
+                  )
+                )
+              }
+            ) {
+              Text("Share")
+            }
+          }
+        }
+      }
+    is UploadState.Failed ->
+      Text(upload.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+    UploadState.Uploading,
+    null -> Unit
+  }
+}
+
 /** Whether this device is signed in to [server], for the connect screen. */
 data class AccountState(val server: ServerAddress, val grant: AccessGrant?)
 
@@ -499,7 +606,8 @@ private val PreviewLink.kind: String
       is PreviewLink.DesignFile -> "design"
       is PreviewLink.RemoteDocument,
       is PreviewLink.LocalDocument -> "document"
-      is PreviewLink.Stream -> "preview"
+      is PreviewLink.Stream,
+      is PreviewLink.CatalogPreview -> "preview"
     }
 
 @Composable

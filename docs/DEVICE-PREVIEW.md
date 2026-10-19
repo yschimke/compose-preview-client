@@ -9,6 +9,8 @@ scale, theme and locale, following changes as they are made.
 | A **`.rc`** document (URL or file) | Played on the device by the AndroidX Remote Compose player | URL: polled with `ETag` / `Last-Modified`, repainted when the bytes change |
 | A **`.uid`** design on a UI builder | Compiled to `.rc` **for this device**, then played on the device. If the design can't be expressed as a document, the host's native Compose render is streamed instead | The design's `updates` socket: each new revision reloads |
 | A **`.uid`** file | Compiled by the configured UI builder for this device, then played; a still render if it can't be | — |
+| A **catalog preview** (`/<catalog>/p/<id>`, `…/render/<id>.png`) | Its `…/render/<id>.rc`, served beside the `.png`, **played on the device**. A preview that isn't Remote Compose (the `.rc` is 404) streams live when signed in, and otherwise shows the `.png` | The `.rc` is re-fetched every 10 s (the catalog sends no validators) |
+| An **uploaded document** (`/d/<id>`) | `/d/<id>/raw` played on the device | Polled, until it expires on the server |
 
 ## Why play on the device
 
@@ -17,6 +19,11 @@ A `.rc` document is what a host app ships, and the player in `:player` is the sa
 clicks run on the device, with no round trip, and what's drawn is what a user would see. The
 document's host actions are shown briefly in the chrome (`action <id> · <payload>`), since a preview
 has no host to route them to.
+
+Each player is primed before it's shown: one off-screen measure, layout and draw at the screen's
+size, then a forced re-measure. The AndroidX player only measures a document once its paint context
+exists, and the first draw creates it. Without priming, a document whose layout depends on measuring
+(the catalog's alarm card, a `StateLayout`) draws its first frame blank.
 
 ## A `.uid` design, step by step
 
@@ -55,6 +62,20 @@ These are compose-preview-server's UI-builder routes (`ServeUiBuilderRoutes`,
 `404` there and designs take step 3. A host started with the Remote Compose export lane enabled
 serves steps 1 and 2.
 
+## Your own documents in the UI builder
+
+The phone's **Share a .rc of your own** uploads a document to the configured server's document lane
+(`POST /docs`) and hands back its permalink, `https://<server>/d/<id>`. That one URL:
+
+- plays in the app on any device (paste or tap it);
+- plays in a browser;
+- plays inside a UI-builder design: a `remote-compose/document` node takes it as its `documentUrl`,
+  the same shape the builder's own inline captures publish.
+
+Uploads expire on the server's schedule. A `--public` server takes them anonymously. A private one
+needs its operator token in the connect screen, because the server's ingest gate refuses sign-in
+grants on purpose, so a preview grant can never publish anything.
+
 ## Signing in
 
 Private designs, and the native render's stream, need a credential. The apps get one with the
@@ -88,14 +109,16 @@ An operator token typed into the connect screen, or a link's own `?token=`, stil
 | `https://H/ui-builder/<designId>` (the editor permalink), `…/ui-builder/<catalog>/<designId>` | design |
 | `https://H/api/ui-builder/v1/designs/<designId>/…` (any design route, including its `export.rc`) | design, still followed live |
 | `composeai://design?host=H[&port=P][&secure=true]&id=<designId>[&token=T][&revision=N]` | design |
+| `https://H/<catalog>/p/<id>`, `https://H/<catalog>/render/<id>.png` | catalog preview, played from its `.rc` |
+| `https://H/d/<id>` | uploaded document |
 | `https://H/…/<name>.rc[?token=T]` | `.rc` document |
 | `composeai://rc?src=<url>[&token=T]` | `.rc` document |
 | `content://…`, `file://…` | local `.rc`, or `.uid` by file name |
 | every [session link](SESSION-VIEWER.md#session-links) | frame stream |
 
-`?token=` and `?revision=` work on the `https` forms. The phone app claims `https` links only for
-`preview.coo.ee` and `ui.coo.ee` under `/ui-builder/`; paste any other server's link into the
-connect screen.
+`?token=` and `?revision=` work on the `https` forms. The apps claim `https` links only on
+`preview.coo.ee` and `ui.coo.ee`, under `/ui-builder/`, `/d/` and `/<catalog>/p/`. Paste any other
+server's link into the connect screen.
 
 ## The phone app
 

@@ -53,6 +53,8 @@ data class PreviewOverlayState(
    * app's chrome offers [ee.schimke.composeai.clients.auth.SignIn] for it, then reopens the link.
    */
   val signIn: SignInNeeded? = null,
+  /** Signing in would show more (a live stream instead of a still); offered, not required. */
+  val signInOffer: ServerAddress? = null,
 )
 
 /**
@@ -153,6 +155,8 @@ fun DevicePreview(
           }
         DocumentContent(state, link.label, "Playing on device · live", overlay, action, onAction)
       }
+      is PreviewLink.CatalogPreview ->
+        CatalogContent(link, device, stream, overlay, action, onAction)
       is PreviewLink.LocalDocument -> {
         val context = LocalContext.current
         val state by
@@ -210,6 +214,105 @@ private fun DocumentContent(
       signIn = state.signIn,
     )
   )
+}
+
+/** Where a catalog preview landed: its own document, a stream, or the catalog's PNG. */
+private sealed interface CatalogState {
+  data class Document(val state: DocumentState) : CatalogState
+
+  data class Streaming(val session: SessionLink) : CatalogState
+
+  data class Still(val png: ByteArray) : CatalogState
+}
+
+/**
+ * A catalog preview: its `render/<id>.rc` played on the device when it is a Remote Compose preview
+ * (followed for republishes); otherwise the live stream with a credential, or the baked PNG.
+ */
+@Composable
+private fun CatalogContent(
+  link: PreviewLink.CatalogPreview,
+  device: DeviceProfile?,
+  stream: @Composable (SessionLink, DeviceProfile) -> Unit,
+  overlay: @Composable (PreviewOverlayState) -> Unit,
+  action: String?,
+  onAction: (Int, Any?) -> Unit,
+) {
+  val state by
+    produceState<CatalogState>(CatalogState.Document(DocumentState()), link) {
+      var fallback = false
+      RemoteDocumentSource(link.rcUrl, link.token).watch().first { result ->
+        val current = (value as? CatalogState.Document)?.state ?: DocumentState()
+        when {
+          result is RemoteDocumentSource.Result.Changed ->
+            value = CatalogState.Document(DocumentState(result.bytes))
+          result is RemoteDocumentSource.Result.Failed && result.status in AUTH_STATUSES ->
+            value =
+              CatalogState.Document(
+                current.copy(
+                  failure = result.message,
+                  loaded = true,
+                  signIn = SignInNeeded(link.server, result.status ?: 401, link.token != null),
+                )
+              )
+          // Not a Remote Compose preview (or no longer one): nothing to play on the device.
+          result is RemoteDocumentSource.Result.Failed && result.status == 404 && current.bytes == null ->
+            fallback = true
+          result is RemoteDocumentSource.Result.Failed ->
+            value = CatalogState.Document(current.copy(failure = result.message, loaded = true))
+          else -> Unit
+        }
+        fallback || (result is RemoteDocumentSource.Result.Failed && result.status in AUTH_STATUSES)
+      }
+      if (!fallback) return@produceState
+      val token = link.token
+      value =
+        if (token != null) CatalogState.Streaming(link.stream(token))
+        else
+          when (
+            val png =
+              try {
+                RemoteDocumentSource(link.pngUrl, null).fetch()
+              } catch (e: CancellationException) {
+                throw e
+              } catch (e: Exception) {
+                RemoteDocumentSource.Result.Failed(e.message ?: "couldn't reach ${link.server.label}")
+              }
+          ) {
+            is RemoteDocumentSource.Result.Changed -> CatalogState.Still(png.bytes)
+            is RemoteDocumentSource.Result.Failed ->
+              CatalogState.Document(DocumentState(failure = png.message, loaded = true))
+            RemoteDocumentSource.Result.Unchanged -> value
+          }
+    }
+
+  when (val current = state) {
+    is CatalogState.Document ->
+      DocumentContent(current.state, link.label, "Playing on device · from the catalog", overlay, action, onAction)
+    is CatalogState.Streaming -> device?.let { stream(current.session, it) }
+    is CatalogState.Still -> {
+      val bitmap =
+        remember(current) {
+          BitmapFactory.decodeByteArray(current.png, 0, current.png.size)?.asImageBitmap()
+        }
+      if (bitmap != null) {
+        Image(
+          bitmap,
+          contentDescription = "Catalog render",
+          modifier = Modifier.fillMaxSize(),
+          contentScale = ContentScale.Fit,
+        )
+      }
+      overlay(
+        PreviewOverlayState(
+          label = link.label,
+          mode = "Catalog render · still",
+          notice = "Not a Remote Compose preview. Sign in to stream it live.",
+          signInOffer = link.server,
+        )
+      )
+    }
+  }
 }
 
 @Composable

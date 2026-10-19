@@ -61,7 +61,10 @@ class RemoteDocumentSource(
    * The document now, then again whenever it changes, until cancelled. A failed poll after the
    * first document is reported but keeps the last good one on screen.
    */
-  fun watch(interval: Duration = DEFAULT_INTERVAL): Flow<Result> = flow {
+  fun watch(
+    interval: Duration = DEFAULT_INTERVAL,
+    unvalidatedInterval: Duration = UNVALIDATED_INTERVAL,
+  ): Flow<Result> = flow {
     while (true) {
       val result =
         try {
@@ -72,7 +75,8 @@ class RemoteDocumentSource(
           Result.Failed(e.message ?: e::class.simpleName.orEmpty())
         }
       if (result !is Result.Unchanged) emit(result)
-      delay(interval)
+      // Without validators every poll downloads the whole document, so poll less often.
+      delay(if (etag == null && lastModified == null) unvalidatedInterval else interval)
     }
   }
 
@@ -87,6 +91,12 @@ class RemoteDocumentSource(
 
   companion object {
     val DEFAULT_INTERVAL: Duration = 2.seconds
+
+    /**
+     * For a server that sends no `ETag` / `Last-Modified` (a hosted catalog's `render/<id>.rc`),
+     * where each poll is a full download.
+     */
+    val UNVALIDATED_INTERVAL: Duration = 10.seconds
 
     private val sharedClient: HttpClient by lazy { HttpClient(OkHttp) { expectSuccess = false } }
 

@@ -35,8 +35,8 @@
             </intent-filter>
 
             <!--
-              The hosted UI builder's design permalinks (`/ui-builder/<designId>`) open straight
-              into a device preview. Host-pinned, so no other web link is claimed.
+              The hosted server's design permalinks, catalog previews and uploaded documents open
+              straight into a device preview. Host-pinned, so no other web link is claimed.
             -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
@@ -46,6 +46,9 @@
                 <data android:host="preview.coo.ee" />
                 <data android:host="ui.coo.ee" />
                 <data android:pathPrefix="/ui-builder/" />
+                <!-- Uploaded documents (`/d/<id>`) and catalog previews (`/<catalog>/p/<id>`). -->
+                <data android:pathPrefix="/d/" />
+                <data android:pathPattern="/.*/p/.*" />
             </intent-filter>
 
             <!--
