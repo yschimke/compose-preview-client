@@ -13,9 +13,18 @@ package ee.schimke.composeai.clients
  *   Resolves to the (forward-looking) `WS /ws/bundle?src=…` entrypoint.
  */
 sealed interface SessionTarget {
-  data class Preview(val previewId: String) : SessionTarget {
+  data class Preview(
+    val previewId: String,
+    /**
+     * The server session (catalog/system) the preview lives in, or null for the server's default
+     * module. Non-null routes to the `/{session}/ws/{previewId}` form — the shape a UI-builder
+     * native render's live stream is opened on.
+     */
+    val session: String? = null,
+  ) : SessionTarget {
     init {
       require(previewId.isNotBlank()) { "previewId is blank" }
+      require(session == null || session.isNotBlank()) { "session is blank" }
     }
   }
 

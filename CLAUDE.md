@@ -35,6 +35,10 @@ owned by `compose-ai-tools`. It is a **wire** dependency, not a code dependency 
 never add a Maven/project dependency on `compose-ai-tools` internals. If the
 contract needs to change, change the spec there first.
 
+The device preview (`:core`'s `preview/` package) also consumes compose-preview-server's UI-builder
+HTTP routes (`/api/ui-builder/v1/designs/…`, `/documents/export.rc`) the same way: over the wire,
+never as a code dependency. See [docs/DEVICE-PREVIEW.md](docs/DEVICE-PREVIEW.md).
+
 ## Publishing
 
 The apps publish to Google Play's internal track via Gradle Play Publisher, driven

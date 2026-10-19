@@ -36,6 +36,7 @@ val appVersionCode =
 
 android {
   namespace = "ee.schimke.composeai.clients.mobile"
+  compileSdk = 37
 
   defaultConfig {
     applicationId = "ee.schimke.composeai.clients.mobile"
@@ -95,6 +96,8 @@ play {
 
 dependencies {
   implementation(project(":core"))
+  // Plays `.rc` documents and Remote Compose designs on the device; see `:player`.
+  implementation(project(":player"))
 
   implementation(platform(libs.compose.bom.stable))
   implementation(libs.compose.ui)

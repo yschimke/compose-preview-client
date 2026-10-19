@@ -45,3 +45,6 @@ jobs:
       # fetches it). This mirrors how compose-ai-tools builds its compileSdk-37 modules.
       - name: Assemble debug
         run: ./gradlew :mobile:assembleDebug :wear:assembleDebug --stacktrace
+      # The bundled `.rc` samples decode with the AndroidX player this build ships.
+      - name: Player tests
+        run: ./gradlew :player:testDebugUnitTest --stacktrace

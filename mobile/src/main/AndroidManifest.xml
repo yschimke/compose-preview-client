@@ -16,7 +16,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|fontScale|density|locale|layoutDirection">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -28,12 +28,42 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="composeai" android:host="session" />
+                <data android:scheme="composeai" android:host="design" />
+                <data android:scheme="composeai" android:host="rc" />
+            </intent-filter>
+
+            <!--
+              The hosted UI builder's design permalinks (`/ui-builder/<designId>`) open straight
+              into a device preview. Host-pinned, so no other web link is claimed.
+            -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="preview.coo.ee" />
+                <data android:host="ui.coo.ee" />
+                <data android:pathPrefix="/ui-builder/" />
+            </intent-filter>
+
+            <!--
+              Opening a `.rc` document (or a `.uid` design) from a file manager, a download or a
+              chat attachment. Neither has a registered MIME type, so they arrive as generic binary
+              or JSON; the app tells them apart by name.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/json" />
             </intent-filter>
             <!--
-              No http(s) VIEW filter: serve runs on arbitrary LAN hosts, so a host-less filter would
-              match every web URL and hijack unrelated browser links (Android ignores path attributes
-              without a host). A pasted/clicked serve viewer URL (`http(s)://host/p/{id}?token=…`) is
-              still accepted — paste it into the connect screen, which parses it via SessionLink.parse.
+              No host-less http(s) VIEW filter: serve runs on arbitrary LAN hosts, so one would match
+              every web URL and hijack unrelated browser links (Android ignores path attributes
+              without a host). Other servers' links are pasted into the connect screen, which parses
+              every shape via PreviewLink.parse.
             -->
         </activity>
     </application>
