@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>yschimke/renovate-config"],
+  "description": "`platformAutomerge` hands the merge of an automerging PR to GitHub's native auto-merge, which lands it the moment the Protect Main ruleset's required checks (ktfmt + core tests and Assemble mobile + wear, per yschimke/renovate-config repo-policy) pass, instead of on Renovate's next run. Safe because those checks build and test; native auto-merge waits only on required checks.",
+  "platformAutomerge": true,
   "packageRules": [
     {
       "description": "The AndroidX Remote Compose player is an alpha line separate from the Compose BOM, and it is what the apps play `.rc` documents and UI-builder designs with. The preset's androidx-compose group would bump it with the BOM; keep it in its own PR, never automerged: a player bump changes what every previewed document looks like, and the restricted player APIs `:player` calls move between alphas. Take a version at or ahead of what the UI builder exports.",
