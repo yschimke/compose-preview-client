@@ -50,7 +50,7 @@ jobs:
       HAS_SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE != '' }}
       HAS_PLAY_CREDENTIALS: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.1.0
         with:
           ref: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
           persist-credentials: false
@@ -141,7 +141,7 @@ jobs:
 
       - name: Attach assets to GitHub release
         if: github.event_name == 'push' || github.event_name == 'workflow_call'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ env.TAG_NAME }}
           files: |
@@ -150,7 +150,7 @@ jobs:
 
       - name: Upload workflow artifact
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: release-${{ steps.stage.outputs.version }}
           path: _release/
