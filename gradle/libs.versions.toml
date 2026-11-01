@@ -15,10 +15,10 @@ compose-preview-plugin = "0.16.54"
 # AndroidX / Compose
 compose-bom-stable = "2026.06.01"
 activity-compose = "1.13.0"
-wear-compose = "1.7.0-alpha05"
+wear-compose = "1.7.1"
 wear-tooling-preview = "1.0.0"
 # Opens a sign-in approval page on the paired phone from the watch.
-wear-remote-interactions = "1.1.0"
+wear-remote-interactions = "1.2.0"
 
 # AndroidX Remote Compose — the player `.rc` documents and Remote Compose designs are played with
 # on the device. Released to Google Maven; keep it at or ahead of what the UI builder exports.
