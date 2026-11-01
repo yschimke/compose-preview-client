@@ -22,7 +22,7 @@ wear-remote-interactions = "1.1.0"
 
 # AndroidX Remote Compose — the player `.rc` documents and Remote Compose designs are played with
 # on the device. Released to Google Maven; keep it at or ahead of what the UI builder exports.
-remote-compose = "1.0.0-alpha21"
+remote-compose = "1.0.0-alpha22"
 
 # Kotlinx
 kotlinx-coroutines = "1.11.0"
