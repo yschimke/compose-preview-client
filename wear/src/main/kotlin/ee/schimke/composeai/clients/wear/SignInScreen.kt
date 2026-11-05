@@ -109,7 +109,11 @@ private fun WearSignInContent(
         style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
       )
       if (sentToPhone == false) {
-        Text(state.approvalUrl, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+        Text(
+          state.approvalUrl,
+          style = MaterialTheme.typography.labelSmall,
+          textAlign = TextAlign.Center,
+        )
       }
       Text("Waiting…", style = MaterialTheme.typography.labelSmall)
     }
@@ -124,16 +128,15 @@ private fun WearSignInContent(
 
 /** Opens [url] in the paired phone's browser; false when there's no phone to open it on. */
 private suspend fun openOnPhone(context: android.content.Context, url: String): Boolean {
-  val future =
-    runCatching {
-        RemoteActivityHelper(context)
-          .startRemoteActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
-          )
-      }
-      .getOrElse {
-        return false
-      }
+  val future = runCatching {
+    RemoteActivityHelper(context)
+      .startRemoteActivity(
+        Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+      )
+  }
+    .getOrElse {
+      return false
+    }
   return suspendCancellableCoroutine { continuation ->
     future.addListener(
       { continuation.resume(runCatching { future.get() }.isSuccess) },

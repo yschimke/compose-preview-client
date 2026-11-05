@@ -239,7 +239,9 @@ data class SessionLink(
 
     internal fun encodeQuery(s: String): String = URLEncoder.encode(s, "UTF-8")
 
-    internal fun decode(s: String): String =
-      runCatching { URLDecoder.decode(s, "UTF-8") }.getOrDefault(s)
+    internal fun decode(s: String): String = runCatching {
+      URLDecoder.decode(s, "UTF-8")
+    }
+      .getOrDefault(s)
   }
 }

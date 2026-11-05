@@ -76,12 +76,11 @@ object StreamMessages {
   }
 
   /** `{"type":"setOverrides","overrides":{…}}` — replace the display overrides and re-render. */
-  fun setOverrides(overrides: Map<String, String>): String =
-    buildJsonObject {
-        put("type", "setOverrides")
-        put("overrides", buildJsonObject { for ((k, v) in overrides) put(k, v) })
-      }
-      .toString()
+  fun setOverrides(overrides: Map<String, String>): String = buildJsonObject {
+    put("type", "setOverrides")
+    put("overrides", buildJsonObject { for ((k, v) in overrides) put(k, v) })
+  }
+    .toString()
 
   /** `{"type":"requestFrame"}` — re-render and push a frame at the current overrides. */
   fun requestFrame(): String = buildJsonObject { put("type", "requestFrame") }.toString()
@@ -91,15 +90,14 @@ object StreamMessages {
    * fields at the top level, as specified in `docs/serve/SESSION-VIEWER-PROTOCOL.md` in
    * compose-ai-tools. The per-connection serve lane supplies the daemon's `frameStreamId`.
    */
-  fun input(event: InputEvent): String =
-    buildJsonObject {
-        put("type", "input")
-        put("kind", event.kind.wire)
-        event.pixelX?.let { put("pixelX", it) }
-        event.pixelY?.let { put("pixelY", it) }
-        put("pointerId", event.pointerId)
-        event.scrollDeltaY?.let { put("scrollDeltaY", it) }
-        event.keyCode?.let { put("keyCode", it) }
-      }
-      .toString()
+  fun input(event: InputEvent): String = buildJsonObject {
+    put("type", "input")
+    put("kind", event.kind.wire)
+    event.pixelX?.let { put("pixelX", it) }
+    event.pixelY?.let { put("pixelY", it) }
+    put("pointerId", event.pointerId)
+    event.scrollDeltaY?.let { put("scrollDeltaY", it) }
+    event.keyCode?.let { put("keyCode", it) }
+  }
+    .toString()
 }

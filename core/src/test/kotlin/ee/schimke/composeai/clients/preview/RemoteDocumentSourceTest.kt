@@ -29,7 +29,8 @@ class RemoteDocumentSourceTest {
         else
           respond(
             body,
-            headers = headersOf(HttpHeaders.ETag, if (body[0] == 1.toByte()) "\"v1\"" else "\"v2\""),
+            headers =
+              headersOf(HttpHeaders.ETag, if (body[0] == 1.toByte()) "\"v1\"" else "\"v2\""),
           )
       }
       val source =

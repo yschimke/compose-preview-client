@@ -9,14 +9,17 @@ import kotlinx.coroutines.withContext
 
 /** Reading `.rc` and `.uid` files handed to the app (`content://` from a file picker or share). */
 object LocalFiles {
-  /** Documents above this are not previews; refusing them keeps a bad pick from exhausting memory. */
+  /**
+   * Documents above this are not previews; refusing them keeps a bad pick from exhausting memory.
+   */
   const val MAX_BYTES: Int = 16 * 1024 * 1024
 
   /** The app's bundled sample documents (`file:///android_asset/…`). */
   const val ASSET_PREFIX: String = "file:///android_asset/"
 
   /** Sample `.rc` documents bundled with the app, to check the player with no server at all. */
-  val SAMPLES: List<String> = listOf("samples/weather.rc", "samples/entities.rc").map { ASSET_PREFIX + it }
+  val SAMPLES: List<String> =
+    listOf("samples/weather.rc", "samples/entities.rc").map { ASSET_PREFIX + it }
 
   suspend fun read(context: Context, uri: String): ByteArray =
     withContext(Dispatchers.IO) {
@@ -33,13 +36,12 @@ object LocalFiles {
   /** The file's display name (`card.rc`), falling back to the URI's last segment. */
   fun displayName(context: Context, uri: String): String {
     val parsed = Uri.parse(uri)
-    val fromProvider =
-      runCatching {
-          context.contentResolver
-            .query(parsed, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
-        }
-        .getOrNull()
+    val fromProvider = runCatching {
+      context.contentResolver
+        .query(parsed, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+        ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+    }
+      .getOrNull()
     return fromProvider ?: parsed.lastPathSegment ?: uri
   }
 

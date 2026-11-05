@@ -43,8 +43,8 @@ import ee.schimke.composeai.clients.player.SignInNeeded
 import ee.schimke.composeai.clients.preview.ServerAddress
 
 /**
- * Over a preview the server refused: explains why, and signs this device in on request. Signing
- * in opens the server's approval page in the browser — where the person is already signed in to
+ * Over a preview the server refused: explains why, and signs this device in on request. Signing in
+ * opens the server's approval page in the browser — where the person is already signed in to
  * GitHub, or holds the operator token — and the app picks the grant up as soon as they approve.
  */
 @Composable

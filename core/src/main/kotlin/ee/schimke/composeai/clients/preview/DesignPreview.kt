@@ -338,8 +338,10 @@ internal constructor(
      * that JSON, else the body's first line.
      */
     private fun UiBuilderApi.Fetch.Refused.describe(): String {
-      val refusal =
-        runCatching { UiBuilderApi.json.parseToJsonElement(message).jsonObject }.getOrNull()
+      val refusal = runCatching {
+        UiBuilderApi.json.parseToJsonElement(message).jsonObject
+      }
+        .getOrNull()
       val code = (refusal?.get("code") as? JsonPrimitive)?.contentOrNull
       if (code != null) {
         val reasons =

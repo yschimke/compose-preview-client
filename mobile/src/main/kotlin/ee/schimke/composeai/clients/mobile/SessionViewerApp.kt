@@ -1,5 +1,6 @@
 package ee.schimke.composeai.clients.mobile
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,8 +36,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,27 +53,24 @@ import ee.schimke.composeai.clients.SessionClient
 import ee.schimke.composeai.clients.SessionLink
 import ee.schimke.composeai.clients.SessionState
 import ee.schimke.composeai.clients.SessionTarget
-import ee.schimke.composeai.clients.discovery.DiscoveredSession
-import android.content.Intent
 import ee.schimke.composeai.clients.auth.AccessGrant
-import ee.schimke.composeai.clients.player.SignInNeeded
-import ee.schimke.composeai.clients.preview.DocsApi
 import ee.schimke.composeai.clients.auth.GrantStore
 import ee.schimke.composeai.clients.auth.SignIn
-import ee.schimke.composeai.clients.preview.ServerAddress
-import java.text.DateFormat
-import java.util.Date
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberCoroutineScope
+import ee.schimke.composeai.clients.discovery.DiscoveredSession
 import ee.schimke.composeai.clients.player.DevicePreview
 import ee.schimke.composeai.clients.player.LocalFiles
 import ee.schimke.composeai.clients.player.PreviewOverlayState
 import ee.schimke.composeai.clients.player.RemoteDocumentPlayer
+import ee.schimke.composeai.clients.player.SignInNeeded
 import ee.schimke.composeai.clients.preview.DeviceProfile
+import ee.schimke.composeai.clients.preview.DocsApi
 import ee.schimke.composeai.clients.preview.PreviewLink
+import ee.schimke.composeai.clients.preview.ServerAddress
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.launch
 
 /**
  * The mobile app root. With a [link] it goes straight into the full-screen [PreviewScreen]; with no
@@ -286,7 +286,9 @@ fun PreviewChrome(state: PreviewOverlayState, onBack: () -> Unit, onSignIn: () -
       verticalArrangement = Arrangement.spacedBy(8.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      state.action?.let { Pill { Text(it, color = Color.White, style = MaterialTheme.typography.labelMedium) } }
+      state.action?.let {
+        Pill { Text(it, color = Color.White, style = MaterialTheme.typography.labelMedium) }
+      }
       state.notice?.let {
         Pill {
           Text(
@@ -318,7 +320,12 @@ private fun Pill(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun MessageOverlay(title: String, detail: String?, onBack: () -> Unit, busy: Boolean = false) {
+private fun MessageOverlay(
+  title: String,
+  detail: String?,
+  onBack: () -> Unit,
+  busy: Boolean = false,
+) {
   Box(
     Modifier.fillMaxSize().background(Color(0xCC101014)).safeDrawingPadding().padding(24.dp),
     contentAlignment = Alignment.Center,
@@ -418,7 +425,10 @@ fun ConnectScreen(
     }
 
   Column(
-    Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp),
+    Modifier.fillMaxSize()
+      .safeDrawingPadding()
+      .verticalScroll(rememberScrollState())
+      .padding(20.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
     Text("Compose Device Preview", style = MaterialTheme.typography.headlineSmall)
@@ -446,11 +456,17 @@ fun ConnectScreen(
     ) {
       Text(if (parsed != null) "Open ${parsed.kind} ${parsed.label}" else "Open")
     }
-    OutlinedButton(onClick = { picker.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
+    OutlinedButton(
+      onClick = { picker.launch(arrayOf("*/*")) },
+      modifier = Modifier.fillMaxWidth(),
+    ) {
       Text("Open a .rc or .uid file")
     }
     UploadRow(upload, onUpload, onOpen)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
       Text(
         "Samples",
         style = MaterialTheme.typography.labelLarge,
@@ -562,7 +578,11 @@ private fun UploadRow(
         }
       }
     is UploadState.Failed ->
-      Text(upload.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+      Text(
+        upload.message,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.error,
+      )
     UploadState.Uploading,
     null -> Unit
   }
@@ -723,8 +743,9 @@ private fun PreviewChromeErrorPreview() {
     PreviewChrome(
       PreviewOverlayState(
         label = "home-screen",
-        error = "The server refused access (HTTP 401). Open the design's link with a token, " +
-          "or ask its owner to share it.",
+        error =
+          "The server refused access (HTTP 401). Open the design's link with a token, " +
+            "or ask its owner to share it.",
       ),
       onBack = {},
     )
@@ -737,8 +758,9 @@ private fun PreviewChromeErrorPreview() {
 private fun SampleDocumentPreview() {
   val context = LocalContext.current
   val sample = LocalFiles.SAMPLES.first()
-  val bytes =
-    remember { context.assets.open(sample.removePrefix(LocalFiles.ASSET_PREFIX)).use { it.readBytes() } }
+  val bytes = remember {
+    context.assets.open(sample.removePrefix(LocalFiles.ASSET_PREFIX)).use { it.readBytes() }
+  }
   MaterialTheme(colorScheme = darkColorScheme()) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
       RemoteDocumentPlayer(bytes)

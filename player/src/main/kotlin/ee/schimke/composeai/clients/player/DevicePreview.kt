@@ -135,7 +135,8 @@ fun DevicePreview(
             // Polls until cancelled — or until the server refuses this device, which more polling
             // can't change: then it stops and asks for a sign-in.
             RemoteDocumentSource(link.url, link.token).watch().first { result ->
-              val refused = result is RemoteDocumentSource.Result.Failed && result.status in AUTH_STATUSES
+              val refused =
+                result is RemoteDocumentSource.Result.Failed && result.status in AUTH_STATUSES
               value =
                 when (result) {
                   is RemoteDocumentSource.Result.Changed -> DocumentState(result.bytes)
@@ -256,8 +257,9 @@ private fun CatalogContent(
                 )
               )
           // Not a Remote Compose preview (or no longer one): nothing to play on the device.
-          result is RemoteDocumentSource.Result.Failed && result.status == 404 && current.bytes == null ->
-            fallback = true
+          result is RemoteDocumentSource.Result.Failed &&
+            result.status == 404 &&
+            current.bytes == null -> fallback = true
           result is RemoteDocumentSource.Result.Failed ->
             value = CatalogState.Document(current.copy(failure = result.message, loaded = true))
           else -> Unit
@@ -276,7 +278,9 @@ private fun CatalogContent(
               } catch (e: CancellationException) {
                 throw e
               } catch (e: Exception) {
-                RemoteDocumentSource.Result.Failed(e.message ?: "couldn't reach ${link.server.label}")
+                RemoteDocumentSource.Result.Failed(
+                  e.message ?: "couldn't reach ${link.server.label}"
+                )
               }
           ) {
             is RemoteDocumentSource.Result.Changed -> CatalogState.Still(png.bytes)
@@ -288,7 +292,14 @@ private fun CatalogContent(
 
   when (val current = state) {
     is CatalogState.Document ->
-      DocumentContent(current.state, link.label, "Playing on device · from the catalog", overlay, action, onAction)
+      DocumentContent(
+        current.state,
+        link.label,
+        "Playing on device · from the catalog",
+        overlay,
+        action,
+        onAction,
+      )
     is CatalogState.Streaming -> device?.let { stream(current.session, it) }
     is CatalogState.Still -> {
       val bitmap =
@@ -374,7 +385,9 @@ private fun DesignPreviewState.toOverlay(label: String, playerError: String?, ac
     loading = content is PreviewContent.Loading || reloading,
     error = playerError ?: (content as? PreviewContent.Failed)?.message,
     signIn =
-      (content as? PreviewContent.NeedsSignIn)?.let { SignInNeeded(it.server, it.status, it.signedIn) },
+      (content as? PreviewContent.NeedsSignIn)?.let {
+        SignInNeeded(it.server, it.status, it.signedIn)
+      },
     notice =
       notice
         ?: (content as? PreviewContent.Stream)?.warnings?.takeIf { it.isNotEmpty() }?.joinToString()
