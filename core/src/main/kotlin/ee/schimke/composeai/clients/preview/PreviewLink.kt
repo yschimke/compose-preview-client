@@ -231,8 +231,8 @@ sealed interface PreviewLink {
       val secure = q["secure"].equals("true", ignoreCase = true)
       val port = q["port"]?.toIntOrNull() ?: if (secure) 443 else SessionLink.DEFAULT_PORT
       return runCatching {
-          Design(ServerAddress(host, port, secure), id, token, q["revision"]?.toLongOrNull())
-        }
+        Design(ServerAddress(host, port, secure), id, token, q["revision"]?.toLongOrNull())
+      }
         .getOrNull()
     }
 

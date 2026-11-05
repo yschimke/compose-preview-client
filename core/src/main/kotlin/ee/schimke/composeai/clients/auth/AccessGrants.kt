@@ -107,9 +107,10 @@ class AccessGrantApi(
   private fun <T> decode(
     text: String,
     serializer: kotlinx.serialization.KSerializer<T>,
-  ): Answer<T> =
-    runCatching { Answer.Ok(json.decodeFromString(serializer, text)) }
-      .getOrElse { Answer.Refused(200, "unreadable reply from ${server.label}") }
+  ): Answer<T> = runCatching {
+    Answer.Ok(json.decodeFromString(serializer, text))
+  }
+    .getOrElse { Answer.Refused(200, "unreadable reply from ${server.label}") }
 
   sealed interface Answer<out T> {
     data class Ok<T>(val value: T) : Answer<T>

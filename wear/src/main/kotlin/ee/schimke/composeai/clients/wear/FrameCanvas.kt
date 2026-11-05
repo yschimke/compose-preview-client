@@ -75,6 +75,7 @@ fun FrameCanvas(frame: StreamFrame?, modifier: Modifier = Modifier, onInput: (In
   }
 }
 
-internal fun decodeFrame(frame: StreamFrame): ImageBitmap? =
-  runCatching { BitmapFactory.decodeByteArray(frame.bytes, 0, frame.bytes.size)?.asImageBitmap() }
-    .getOrNull()
+internal fun decodeFrame(frame: StreamFrame): ImageBitmap? = runCatching {
+  BitmapFactory.decodeByteArray(frame.bytes, 0, frame.bytes.size)?.asImageBitmap()
+}
+  .getOrNull()

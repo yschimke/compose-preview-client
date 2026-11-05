@@ -74,7 +74,12 @@ fun RemoteDocumentPlayer(
  * that way. The same warm-up homeassistant-remotecompose's player does.
  */
 private fun prime(view: RemoteComposePlayer, widthPx: Int, heightPx: Int) {
-  if (widthPx <= 0 || heightPx <= 0 || widthPx == Constraints.Infinity || heightPx == Constraints.Infinity)
+  if (
+    widthPx <= 0 ||
+      heightPx <= 0 ||
+      widthPx == Constraints.Infinity ||
+      heightPx == Constraints.Infinity
+  )
     return
   val w = widthPx.coerceAtMost(MAX_PRIME_PX)
   val h = heightPx.coerceAtMost(MAX_PRIME_PX)

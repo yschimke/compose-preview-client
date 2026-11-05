@@ -33,9 +33,9 @@ import ee.schimke.composeai.clients.SessionClient
 import ee.schimke.composeai.clients.SessionLink
 import ee.schimke.composeai.clients.SessionState
 import ee.schimke.composeai.clients.SessionTarget
-import ee.schimke.composeai.clients.discovery.DiscoveredSession
 import ee.schimke.composeai.clients.auth.AccessGrant
 import ee.schimke.composeai.clients.auth.GrantStore
+import ee.schimke.composeai.clients.discovery.DiscoveredSession
 import ee.schimke.composeai.clients.player.DevicePreview
 import ee.schimke.composeai.clients.player.LocalFiles
 import ee.schimke.composeai.clients.player.PreviewOverlayState

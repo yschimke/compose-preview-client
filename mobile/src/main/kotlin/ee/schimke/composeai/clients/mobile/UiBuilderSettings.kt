@@ -5,8 +5,8 @@ import ee.schimke.composeai.clients.preview.ServerAddress
 import java.net.URI
 
 /**
- * The UI builder a local `.uid` file is compiled on. A hosted design's link names its own server;
- * a file doesn't, so the app remembers one. Defaults to the public hosted builder.
+ * The UI builder a local `.uid` file is compiled on. A hosted design's link names its own server; a
+ * file doesn't, so the app remembers one. Defaults to the public hosted builder.
  */
 class UiBuilderSettings(context: Context) {
   private val prefs = context.getSharedPreferences("ui-builder", Context.MODE_PRIVATE)
@@ -27,10 +27,11 @@ class UiBuilderSettings(context: Context) {
     private const val KEY_SERVER = "server"
     private const val KEY_TOKEN = "token"
 
-    fun parseServer(url: String): ServerAddress? =
-      runCatching { URI(url.trim()) }
-        .getOrNull()
-        ?.takeIf { it.scheme == "http" || it.scheme == "https" }
-        ?.let(ServerAddress::of)
+    fun parseServer(url: String): ServerAddress? = runCatching {
+      URI(url.trim())
+    }
+      .getOrNull()
+      ?.takeIf { it.scheme == "http" || it.scheme == "https" }
+      ?.let(ServerAddress::of)
   }
 }

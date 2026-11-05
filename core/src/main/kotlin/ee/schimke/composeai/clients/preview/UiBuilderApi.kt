@@ -95,8 +95,8 @@ class UiBuilderApi(
       }
     if (!response.status.isSuccess()) return response.refusal()
     return runCatching {
-        Fetch.Ok(json.decodeFromString(NativePreview.serializer(), response.bodyAsText()))
-      }
+      Fetch.Ok(json.decodeFromString(NativePreview.serializer(), response.bodyAsText()))
+    }
       .getOrElse { Fetch.Refused(response.status.value, "unreadable native render reply") }
   }
 

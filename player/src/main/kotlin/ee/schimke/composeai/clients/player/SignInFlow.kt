@@ -32,7 +32,10 @@ class SharedPrefsGrantStore(context: Context) : GrantStore {
     }
 
   override fun put(grant: AccessGrant) {
-    prefs.edit().putString(grant.origin, json.encodeToString(AccessGrant.serializer(), grant)).apply()
+    prefs
+      .edit()
+      .putString(grant.origin, json.encodeToString(AccessGrant.serializer(), grant))
+      .apply()
   }
 
   override fun remove(origin: String) {
@@ -40,7 +43,9 @@ class SharedPrefsGrantStore(context: Context) : GrantStore {
   }
 }
 
-/** What the person sees on the server's approval page, so they know which device they're letting in. */
+/**
+ * What the person sees on the server's approval page, so they know which device they're letting in.
+ */
 fun signInLabel(): String = "Compose Device Preview on ${Build.MANUFACTURER} ${Build.MODEL}".trim()
 
 /**
