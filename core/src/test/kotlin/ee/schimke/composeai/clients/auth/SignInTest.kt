@@ -63,7 +63,7 @@ class SignInTest {
       // The approval page is built on the server that was asked, not taken from the reply.
       assertThat(states[1])
         .isEqualTo(
-          SignInState.AwaitingApproval("https://ui.example/agent-access/r%201", "WXYZ-1234")
+          SignInState.AwaitingApproval("https://ui.example/agent-access/r%201", "WXYZ-1234"),
         )
       val grant = (states.last() as SignInState.SignedIn).grant
       assertThat(grant.token).isEqualTo("cpg_abc")
@@ -179,7 +179,7 @@ class SignInTest {
     assertThat(open.requestedCapabilities).containsExactly("ui-builder-read", "ui-builder-export")
     // The page the app opens is the one the live server would have named.
     assertThat(
-        AccessGrantApi.approvalUrl(ServerAddress("preview.coo.ee", 443, true), open.requestId)
+        AccessGrantApi.approvalUrl(ServerAddress("preview.coo.ee", 443, true), open.requestId),
       )
       .isEqualTo(open.approveUrl)
 

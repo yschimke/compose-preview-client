@@ -62,7 +62,7 @@ fun FrameCanvas(frame: StreamFrame?, modifier: Modifier = Modifier, onInput: (In
             )
           onInput(InputEvent.click(px, py))
         }
-      }
+      },
   ) {
     if (bitmap != null) {
       Image(

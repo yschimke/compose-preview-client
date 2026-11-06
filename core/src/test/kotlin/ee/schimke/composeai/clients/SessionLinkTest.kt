@@ -9,7 +9,7 @@ class SessionLinkTest {
   fun parsesCustomSchemePreview() {
     val link =
       SessionLink.parse(
-        "composeai://session?host=192.168.1.5&port=7341&preview=com.x.Foo&token=abc123"
+        "composeai://session?host=192.168.1.5&port=7341&preview=com.x.Foo&token=abc123",
       )
     assertThat(link)
       .isEqualTo(SessionLink("192.168.1.5", 7341, "abc123", SessionTarget.Preview("com.x.Foo")))
@@ -19,7 +19,7 @@ class SessionLinkTest {
   fun parsesCustomSchemeBundle() {
     val link =
       SessionLink.parse(
-        "composeai://session?host=h&port=7341&token=t&bundle=https%3A%2F%2Fcdn%2Fa.bundle&preview=Foo"
+        "composeai://session?host=h&port=7341&token=t&bundle=https%3A%2F%2Fcdn%2Fa.bundle&preview=Foo",
       )
     assertThat(link!!.target)
       .isEqualTo(SessionTarget.Bundle("https://cdn/a.bundle", previewId = "Foo"))
@@ -62,7 +62,7 @@ class SessionLinkTest {
   fun parseOpenReadsHostlessBundleRequest() {
     val open =
       SessionLink.parseOpen(
-        "composeai://open?bundle=https%3A%2F%2Fcdn%2Fx.bundle&token=tok&preview=P"
+        "composeai://open?bundle=https%3A%2F%2Fcdn%2Fx.bundle&token=tok&preview=P",
       )
     assertThat(open)
       .isEqualTo(SessionLink.OpenRequest(SessionTarget.Bundle("https://cdn/x.bundle", "P"), "tok"))

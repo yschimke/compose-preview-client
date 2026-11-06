@@ -71,7 +71,7 @@ object StreamMessages {
         widthPx = (obj["widthPx"] as? JsonPrimitive)?.intOrNull ?: 0,
         heightPx = (obj["heightPx"] as? JsonPrimitive)?.intOrNull ?: 0,
         bytes = bytes,
-      )
+      ),
     )
   }
 

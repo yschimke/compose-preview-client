@@ -131,7 +131,7 @@ private suspend fun openOnPhone(context: android.content.Context, url: String): 
   val future = runCatching {
     RemoteActivityHelper(context)
       .startRemoteActivity(
-        Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+        Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE),
       )
   }
     .getOrElse {

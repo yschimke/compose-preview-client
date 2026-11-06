@@ -226,7 +226,7 @@ class DesignPreviewTest {
       assertThat(content.revision).isEqualTo(7)
       assertThat(content.reasons)
         .containsExactly(
-          "native render: UNPROVEN_CALL_SITE · `m3/search-bar` has no call site · +1 more"
+          "native render: UNPROVEN_CALL_SITE · `m3/search-bar` has no call site · +1 more",
         )
     }
 

@@ -20,7 +20,7 @@ class PreviewLinkTest {
   fun catalogScopedEditorLinkKeepsTokenAndRevision() {
     val link =
       PreviewLink.parse(
-        "http://10.0.0.2:8723/ui-builder/m3-catalog/home%20screen?token=t&revision=4"
+        "http://10.0.0.2:8723/ui-builder/m3-catalog/home%20screen?token=t&revision=4",
       )
     assertThat(link)
       .isEqualTo(PreviewLink.Design(ServerAddress("10.0.0.2", 8723, false), "home screen", "t", 4))
@@ -45,7 +45,7 @@ class PreviewLinkTest {
     val link = PreviewLink.parse("https://preview.coo.ee/m3/render/Button.rc?token=t")
     assertThat(link)
       .isEqualTo(
-        PreviewLink.RemoteDocument("https://preview.coo.ee/m3/render/Button.rc?token=t", "t")
+        PreviewLink.RemoteDocument("https://preview.coo.ee/m3/render/Button.rc?token=t", "t"),
       )
     assertThat(link!!.label).isEqualTo("Button.rc")
   }
@@ -75,7 +75,7 @@ class PreviewLinkTest {
     val server = ServerAddress("preview.coo.ee", 443, true)
     val viewer =
       PreviewLink.parse(
-        "https://preview.coo.ee/homeassistant-remotecompose/p/card-alarm-light__ideal__default__light__compact"
+        "https://preview.coo.ee/homeassistant-remotecompose/p/card-alarm-light__ideal__default__light__compact",
       ) as PreviewLink.CatalogPreview
     assertThat(viewer)
       .isEqualTo(
@@ -83,18 +83,18 @@ class PreviewLinkTest {
           server,
           "homeassistant-remotecompose",
           "card-alarm-light__ideal__default__light__compact",
-        )
+        ),
       )
     // The .rc beside the .png the catalog serves.
     assertThat(viewer.rcUrl)
       .isEqualTo(
-        "https://preview.coo.ee/homeassistant-remotecompose/render/card-alarm-light__ideal__default__light__compact.rc"
+        "https://preview.coo.ee/homeassistant-remotecompose/render/card-alarm-light__ideal__default__light__compact.rc",
       )
     assertThat(viewer.pngUrl)
       .endsWith("/render/card-alarm-light__ideal__default__light__compact.png")
     assertThat(viewer.stream("t").webSocketUrl())
       .isEqualTo(
-        "wss://preview.coo.ee:443/homeassistant-remotecompose/ws/card-alarm-light__ideal__default__light__compact?token=t"
+        "wss://preview.coo.ee:443/homeassistant-remotecompose/ws/card-alarm-light__ideal__default__light__compact?token=t",
       )
 
     assertThat(PreviewLink.parse("https://preview.coo.ee/m3/render/Button.png?token=t"))

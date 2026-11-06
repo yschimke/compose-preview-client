@@ -69,7 +69,7 @@ fun FrameCanvas(frame: StreamFrame?, modifier: Modifier = Modifier, onInput: (In
             toFramePixels(offset.x, offset.y)?.let {
               last = it
               onInput(
-                InputEvent(InputEvent.Kind.POINTER_DOWN, pixelX = it.first, pixelY = it.second)
+                InputEvent(InputEvent.Kind.POINTER_DOWN, pixelX = it.first, pixelY = it.second),
               )
             }
           },
@@ -81,7 +81,7 @@ fun FrameCanvas(frame: StreamFrame?, modifier: Modifier = Modifier, onInput: (In
             onInput(InputEvent(InputEvent.Kind.POINTER_MOVE, pixelX = it.first, pixelY = it.second))
           }
         }
-      }
+      },
   ) {
     if (bitmap != null) {
       Image(

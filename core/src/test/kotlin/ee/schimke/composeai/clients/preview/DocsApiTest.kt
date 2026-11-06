@@ -38,7 +38,7 @@ class DocsApiTest {
 
       assertThat(upload)
         .isEqualTo(
-          DocsApi.Upload.Published("https://preview.coo.ee/d/AbC123", "1 hour", "Remote Compose")
+          DocsApi.Upload.Published("https://preview.coo.ee/d/AbC123", "1 hour", "Remote Compose"),
         )
       assertThat(seen!!.method).isEqualTo(HttpMethod.Post)
       assertThat(seen!!.url.toString()).isEqualTo("https://preview.coo.ee/docs?name=card+one.rc")
