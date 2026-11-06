@@ -568,9 +568,9 @@ private fun UploadRow(
                       .setType("text/plain")
                       .putExtra(Intent.EXTRA_TEXT, upload.published.permalink),
                     null,
-                  )
+                  ),
                 )
-              }
+              },
             ) {
               Text("Share")
             }

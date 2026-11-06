@@ -60,7 +60,7 @@ class AccessGrantApi(
           json.encodeToString(
             OpenRequest.serializer(),
             OpenRequest(label, scope, ttlSeconds, capabilities),
-          )
+          ),
         )
       }
     val text = response.bodyAsText()
@@ -81,7 +81,7 @@ class AccessGrantApi(
           json.encodeToString(
             PollRequest.serializer(),
             PollRequest(requestId, deviceSecret, waitSeconds),
-          )
+          ),
         )
       }
     val text = response.bodyAsText()

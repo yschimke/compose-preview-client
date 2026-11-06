@@ -105,7 +105,7 @@ fun DevicePreview(
               try {
                 Result.success(
                   Json.parseToJsonElement(LocalFiles.read(context, link.uri).decodeToString())
-                    .jsonObject
+                    .jsonObject,
                 )
               } catch (e: CancellationException) {
                 throw e
@@ -121,7 +121,7 @@ fun DevicePreview(
               PreviewOverlayState(
                 link.label,
                 error = "Not a .uid design: ${loaded.exceptionOrNull()?.message}",
-              )
+              ),
             )
           else -> {
             val preview = remember(link, loaded) { DesignPreview(link, loaded.getOrThrow()) }
@@ -213,7 +213,7 @@ private fun DocumentContent(
       notice = state.failure.takeIf { state.bytes != null && state.signIn == null },
       action = action,
       signIn = state.signIn,
-    )
+    ),
   )
 }
 
@@ -254,7 +254,7 @@ private fun CatalogContent(
                   failure = result.message,
                   loaded = true,
                   signIn = SignInNeeded(link.server, result.status ?: 401, link.token != null),
-                )
+                ),
               )
           // Not a Remote Compose preview (or no longer one): nothing to play on the device.
           result is RemoteDocumentSource.Result.Failed &&
@@ -279,7 +279,7 @@ private fun CatalogContent(
                 throw e
               } catch (e: Exception) {
                 RemoteDocumentSource.Result.Failed(
-                  e.message ?: "couldn't reach ${link.server.label}"
+                  e.message ?: "couldn't reach ${link.server.label}",
                 )
               }
           ) {
@@ -320,7 +320,7 @@ private fun CatalogContent(
           mode = "Catalog render · still",
           notice = "Not a Remote Compose preview. Sign in to stream it live.",
           signInOffer = link.server,
-        )
+        ),
       )
     }
   }

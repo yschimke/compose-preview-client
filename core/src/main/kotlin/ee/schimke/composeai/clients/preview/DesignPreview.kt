@@ -193,7 +193,7 @@ internal constructor(
               // design, not the route: say so rather than falling through to an auth failure.
               if (read.status == 404) {
                 return PreviewContent.Failed(
-                  "There's no design “${source.link.designId}” on ${source.link.server.label}."
+                  "There's no design “${source.link.designId}” on ${source.link.server.label}.",
                 )
               }
               if (!read.unsupported) reasons += "read: ${read.describe()}"
@@ -230,7 +230,7 @@ internal constructor(
               PreviewContent.Failed(
                 (reasons + "render: ${png.describe()}").joinToString("\n").ifBlank {
                   "This server can't render .uid files"
-                }
+                },
               )
         }
       }

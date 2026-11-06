@@ -46,7 +46,7 @@ class DocsApi(
           413 -> "The document is too large for ${server.label}."
           else ->
             text.lineSequence().firstOrNull { it.isNotBlank() } ?: "HTTP ${response.status.value}"
-        }
+        },
       )
     }
     val accepted =

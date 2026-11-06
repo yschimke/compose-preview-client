@@ -74,7 +74,7 @@ class SignIn(
         throw e
       } catch (e: Exception) {
         emit(
-          SignInState.Failed("Couldn't reach ${server.label}: ${e.message ?: e::class.simpleName}")
+          SignInState.Failed("Couldn't reach ${server.label}: ${e.message ?: e::class.simpleName}"),
         )
         return@flow
       }
@@ -90,7 +90,7 @@ class SignIn(
       SignInState.AwaitingApproval(
         AccessGrantApi.approvalUrl(server, request.requestId),
         request.userCode,
-      )
+      ),
     )
 
     val deadline = clock() + request.expiresInSeconds * 1_000
@@ -146,7 +146,7 @@ class SignIn(
         }
         else -> {
           emit(
-            SignInState.Failed(poll.message ?: "The request ${poll.status}. Try signing in again.")
+            SignInState.Failed(poll.message ?: "The request ${poll.status}. Try signing in again."),
           )
           return@flow
         }

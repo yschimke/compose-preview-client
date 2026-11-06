@@ -128,7 +128,7 @@ fun SignInPanel(
   val openInBrowser: (String) -> Boolean = { url ->
     try {
       context.startActivity(
-        Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
       )
       true
     } catch (_: ActivityNotFoundException) {
