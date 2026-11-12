@@ -3,7 +3,7 @@
 agp = "9.5.1"
 kotlin = "2.4.21"
 ktfmt = "0.28.0"
-play-publisher = "4.1.1"
+play-publisher = "4.1.2"
 
 # The compose-preview render plugin (published to Maven Central from
 # yschimke/compose-ai-tools). Consumed for the mobile/wear @Preview render
