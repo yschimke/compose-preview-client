@@ -10,7 +10,7 @@ play-publisher = "4.1.2"
 # pipeline that regenerates the Play-store screenshots (`composePreviewRenderAll`).
 # The plugin marker isn't published, so settings.gradle.kts maps the id to the
 # `ee.schimke.composeai:compose-preview-plugin` artifact coordinates.
-compose-preview-plugin = "2.90.0"
+compose-preview-plugin = "2.90.1"
 
 # AndroidX / Compose
 compose-bom-stable = "2026.09.00"
