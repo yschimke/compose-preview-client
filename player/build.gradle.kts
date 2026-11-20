@@ -11,7 +11,7 @@ plugins {
 
 android {
   namespace = "ee.schimke.composeai.clients.player"
-  compileSdk = 37
+  compileSdk { version = release(37) { minorApiLevel = 1 } }
   // The AndroidX Remote Compose player's own floor, and the phone app's.
   defaultConfig { minSdk = 26 }
   buildFeatures { compose = true }

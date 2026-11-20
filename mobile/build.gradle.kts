@@ -36,7 +36,7 @@ val appVersionCode =
 
 android {
   namespace = "ee.schimke.composeai.clients.mobile"
-  compileSdk = 37
+  compileSdk { version = release(37) { minorApiLevel = 1 } }
 
   defaultConfig {
     applicationId = "ee.schimke.composeai.clients.mobile"
