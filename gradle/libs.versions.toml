@@ -13,7 +13,7 @@ play-publisher = "4.1.2"
 compose-preview-plugin = "2.101.0"
 
 # AndroidX / Compose
-compose-bom-stable = "2026.09.00"
+compose-bom-stable = "2026.11.01"
 activity-compose = "1.13.0"
 wear-compose = "1.7.2"
 wear-tooling-preview = "1.0.0"
