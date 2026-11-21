@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.3](https://github.com/yschimke/compose-preview-client/compare/v0.2.2...v0.2.3) (2026-11-20)
+
+
+### Bug Fixes
+
+* **deps:** update androidx-compose-remote to v1.0.0-alpha24 ([#54](https://github.com/yschimke/compose-preview-client/issues/54)) ([9f7f249](https://github.com/yschimke/compose-preview-client/commit/9f7f24942b94c2d37aa222351efed46923b5b8c5))
+* **deps:** update androidx-wear to v1.7.2 ([#55](https://github.com/yschimke/compose-preview-client/issues/55)) ([1eedc54](https://github.com/yschimke/compose-preview-client/commit/1eedc546ff7afd53227976dd7605193fa70eb056))
+* **deps:** update dependency androidx.compose:compose-bom to v2026.11.01 ([#56](https://github.com/yschimke/compose-preview-client/issues/56)) ([096d397](https://github.com/yschimke/compose-preview-client/commit/096d397c0892dcc1d5ce677bb8bae68787917eeb))
+* **deps:** update dependency org.jetbrains.kotlinx:kotlinx-serialization-json to v1.13.0 ([#38](https://github.com/yschimke/compose-preview-client/issues/38)) ([13a622d](https://github.com/yschimke/compose-preview-client/commit/13a622dc597b785c3d15e867dfd0b84e141138ed))
+
 ## [0.2.2](https://github.com/yschimke/compose-preview-client/compare/v0.2.1...v0.2.2) (2026-11-06)
 
 
